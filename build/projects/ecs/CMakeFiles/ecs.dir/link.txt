@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../lib/libecs.a CMakeFiles/ecs.dir/build.cpp.o
-/usr/bin/ranlib ../../lib/libecs.a
