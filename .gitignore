@@ -33,5 +33,6 @@
 
 /build/
 /.cache/
-compile_commands.json
-pulse.sublime-project
+/compile_commands.json
+/pulse.sublime-project
+/pulse.sublime-workspace
