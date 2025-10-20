@@ -1,8 +1,5 @@
 #pragma once
-#include <cmath>
-#include <condition_variable>
 #include <cstddef>
-#include <functional>
 #include <meta>
 #include <type_traits>
 #include <vector>
@@ -276,3 +273,11 @@ namespace pulse::ecs
 	    }
     }
 }
+
+#define PULSE_ECS_CONSTRUCT_STORAGE(_identifier, _entity_namespace, _buffer)\
+pulse::ecs::_entity_namespace::storage::Type _identifier;\
+{\
+	constexpr auto _access_context = std::meta::access_context::current();\
+    pulse::ecs::construct_storage<_access_context, ^^pulse::ecs::_entity_namespace, decltype(storage), _buffer>(_identifier);\
+}\
+//
