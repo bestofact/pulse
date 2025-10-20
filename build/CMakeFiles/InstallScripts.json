@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/cantu/Dev/projects/pulse/build/cmake_install.cmake",
+		"/Users/cantu/Dev/projects/pulse/build/projects/app/cmake_install.cmake",
+		"/Users/cantu/Dev/projects/pulse/build/projects/ecs/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -1,0 +1,9 @@
+/Users/cantu/Dev/projects/pulse/build/CMakeFiles/compile_commands_link.dir
+/Users/cantu/Dev/projects/pulse/build/CMakeFiles/edit_cache.dir
+/Users/cantu/Dev/projects/pulse/build/CMakeFiles/rebuild_cache.dir
+/Users/cantu/Dev/projects/pulse/build/projects/app/CMakeFiles/app.dir
+/Users/cantu/Dev/projects/pulse/build/projects/app/CMakeFiles/edit_cache.dir
+/Users/cantu/Dev/projects/pulse/build/projects/app/CMakeFiles/rebuild_cache.dir
+/Users/cantu/Dev/projects/pulse/build/projects/ecs/CMakeFiles/ecs.dir
+/Users/cantu/Dev/projects/pulse/build/projects/ecs/CMakeFiles/edit_cache.dir
+/Users/cantu/Dev/projects/pulse/build/projects/ecs/CMakeFiles/rebuild_cache.dir

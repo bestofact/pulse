@@ -1,0 +1,48 @@
+{
+  "folders": [{ "path": ".", }],
+  "build_systems":
+  [
+		{
+			"config": "Release",
+			"env":
+			{
+			},
+			"generator": "Unix Makefiles",
+			"name": "Release",
+			"target": "cmake_build",
+			"variants":
+			[
+				{
+					"build_target": "app",
+					"name": "app"
+				},
+				{
+					"artifact": "bin/app",
+					"build_target": "app",
+					"name": "Run: app",
+					"target": "cmake_run"
+				},
+				{
+					"artifact": "bin/app",
+					"build_target": "app",
+					"debug": true,
+					"name": "Run under LLDB: app",
+					"target": "cmake_run"
+				},
+				{
+					"build_target": "compile_commands_link",
+					"name": "compile_commands_link"
+				},
+				{
+					"build_target": "ecs",
+					"name": "ecs"
+				},
+				{
+					"name": "ctest",
+					"target": "ctest_run"
+				}
+			],
+			"working_dir": "$folder/build"
+		}
+	],
+}
