@@ -278,6 +278,6 @@ namespace pulse::ecs
 pulse::ecs::_entity_namespace::storage::Type _identifier;\
 {\
 	constexpr auto _access_context = std::meta::access_context::current();\
-    pulse::ecs::construct_storage<_access_context, ^^pulse::ecs::_entity_namespace, decltype(storage), _buffer>(_identifier);\
+    pulse::ecs::construct_storage<_access_context, ^^pulse::ecs::_entity_namespace, decltype(_identifier), _buffer>(_identifier);\
 }\
 //
