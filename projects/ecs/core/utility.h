@@ -28,24 +28,21 @@ consteval\
 
 namespace pulse::ecs
 {
-	struct SystemContainerBase
+	template<typename _system_type>
+	struct SystemContainer final
 	{
-		virtual ~SystemContainerBase() = default;
-		virtual void Call() = 0;
+		void Call() const
+		{
+			m_system_ptr();
+		}
 
-		void(*m_system_function_ptr)() = nullptr;
+		std::add_pointer_t<_system_type> m_system_ptr = nullptr;
 	};
 
-	template<typename _system_type>
-	struct SystemContainer final : public SystemContainerBase
+	struct SystemContainerPointer final
 	{
-		using SystemType = std::remove_pointer_t<_system_type>;
-
-		virtual void Call() override
-		{
-			auto fn = reinterpret_cast<SystemType*>(m_system_function_ptr);
-			fn();
-		}
+		ptrdiff_t m_offset = 0;
+		std::meta::info m_info = {};
 	};
 
     // Collect all namespace members under a reflection.
@@ -145,7 +142,7 @@ namespace pulse::ecs
 				if(system != std::meta::info{})
 				{
 					m_data[storage_index++] = std::meta::data_member_spec(
-						std::meta::substitute(^^pulse::ecs::SystemContainer, { std::meta::add_pointer(std::meta::type_of(system)) }),
+						std::meta::substitute(^^pulse::ecs::SystemContainer, { std::meta::type_of(system) }),
 						{
 							.name = std::meta::identifier_of(system)
 						}
@@ -156,7 +153,7 @@ namespace pulse::ecs
 
 			// Add system member offsets data member.
 			m_data[system_offset_data_member_index] = std::meta::data_member_spec(
-				std::meta::substitute(^^std::array, {^^ptrdiff_t, std::meta::reflect_constant(system_count)}),
+				std::meta::substitute(^^std::array, {^^SystemContainerPointer, std::meta::reflect_constant(system_count)}),
 				{
 					.name = "m_system_member_offsets"
 				}
@@ -194,12 +191,35 @@ namespace pulse::ecs
 	    std::meta::member_offset m_offset;
 	};
 
-	// Get system container pointer from stroge and member offset to it.
-	template<typename _storage_type>
-	SystemContainerBase* get_storage_system_container(_storage_type& out_storage, const ptrdiff_t in_offset)
+	template<std::meta::info _system, std::meta::info _member>
+	struct SystemContainerPointerGenerator
 	{
-		return reinterpret_cast<SystemContainerBase*>(reinterpret_cast<char*>((&out_storage)) + in_offset);
+		constexpr SystemContainerPointerGenerator() : m_data()
+		{
+			constexpr auto member_offset = OffsetOf<_member>();
+			m_data.m_offset = member_offset.m_offset.bytes;
+			m_data.m_info = _system;
+		}
+
+		SystemContainerPointer m_data;
+	};
+
+/*
+	// Get system container pointer from stroge and member offset to it.
+	template<typename _storage_type, typename _system_type>
+	SystemContainer<_system_type>* get_storage_system_container(_storage_type& out_storage, const ptrdiff_t in_offset)
+	{
+		return reinterpret_cast<SystemContainer<_system_type>*>(reinterpret_cast<char*>((&out_storage)) + in_offset);
 	}
+
+	// Get system container pointer from stroge and member offset to it.
+	template<typename _storage_type, std::meta::info _system_info>
+	SystemContainer<typename [:std::meta::type_of(_system_info):]>* get_storage_system_container(_storage_type& out_storage, const ptrdiff_t in_offset)
+	{
+		return reinterpret_cast<SystemContainer<typename [:std::meta::type_of(_system_info):]>*>(reinterpret_cast<char*>((&out_storage)) + in_offset);
+	}
+
+	*/
 
     // This returns a vector of members' reflection info for a storage.
     template<
@@ -221,22 +241,17 @@ namespace pulse::ecs
         return members;
     }
 
+/*
     template<std::meta::access_context _ctx, std::meta::info _entity_namespace, typename _storage_type, size_t _buffer>
     void construct_storage(_storage_type& out_storage)
     {
     	constexpr auto storage = pulse::ecs::StorageMemberCollector<_ctx, ^^_storage_type, _buffer>();
     	constexpr auto systems = pulse::ecs::SystemCollector<_ctx, _entity_namespace, _buffer>();
 
-    	struct SystemInstanceInfo final
-    	{
-    		ptrdiff_t m_storage_offset = 0;
-    		void(*m_system_function_ptr)()  = nullptr;
-    	};
-
-    	std::vector<SystemInstanceInfo> system_instance_info;
+    	size_t system_index = 0;
 	    template for(constexpr auto member : storage.m_data)
 	    {
-	        if constexpr(member != std::meta::info{} && !std::meta::is_special_member_function(member) && !std::meta::is_template(member))
+	        if constexpr(member != std::meta::info{} && !std::meta::is_special_member_function(member))
 	        {
 	            template for(constexpr auto system : systems.m_data)
 	            {
@@ -244,22 +259,18 @@ namespace pulse::ecs
 	                {
 	                    if constexpr(std::meta::identifier_of(system) == std::meta::identifier_of(member))
 	                    {
-	                        auto member_offset = pulse::ecs::OffsetOf<member>();
-	                        auto system_function_ptr = &[:system:];
-	                        system_instance_info.push_back({member_offset.m_offset.bytes, system_function_ptr});
+	                    	//auto system_type_info = std::meta::type_of(member);
+	                        constexpr auto member_offset = pulse::ecs::OffsetOf<member>();	                        
+	                        
+	                        auto* system_container = get_storage_system_container<_storage_type, >(out_storage, member_offset.m_offset.bytes);
+	                  		system_container->m_system_function_ptr = &[:system:];
+	                 
+	                 		constexpr auto system_pointer = SystemPointerGenerator<system, member>();
+	                    	out_storage.m_system_member_offsets[system_index++] = system_pointer.m_data;
 	                    }
 	                }
 	            }
 	        }
-	    }
-
-	    for(size_t system_index = 0; system_index < system_instance_info.size(); ++system_index)
-	    {
-	    	const auto system_instance = system_instance_info[system_index];
-	    	out_storage.m_system_member_offsets[system_index] = system_instance.m_storage_offset;
-
-	    	auto* system_container = get_storage_system_container<_storage_type>(out_storage, system_instance.m_storage_offset);
-	        system_container->m_system_function_ptr = system_instance.m_system_function_ptr;
 	    }
     }
 
@@ -268,10 +279,12 @@ namespace pulse::ecs
     {
     	for(auto offset : io_storage.m_system_member_offsets)
 	    {
-	        auto* system_container = pulse::ecs::get_storage_system_container<decltype(io_storage)>(io_storage, offset);
+	        auto* system_container = pulse::ecs::get_storage_system_container<decltype(io_storage), offset.m_info>(io_storage, offset.m_offset);
 	        system_container->Call();
 	    }
     }
+
+    */
 }
 
 #define PULSE_ECS_CONSTRUCT_STORAGE(_identifier, _entity_namespace, _buffer)\
