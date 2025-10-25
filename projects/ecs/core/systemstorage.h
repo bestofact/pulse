@@ -1,6 +1,10 @@
 #pragma once
+
+#include "ecs/core/utility.h"
+
 #include <meta>
 #include <type_traits>
+
 
 namespace pulse::ecs
 {
@@ -11,11 +15,6 @@ namespace pulse::ecs
 		SystemFunctionPointerType m_pointer = _system_instance;
 	};
 
-	consteval bool is_system(std::meta::info in_info)
-	{
-		return std::meta::is_function(in_info);
-	}
-
 	template<std::meta::info _entity_namespace_info, typename _system_storage_type>
 	consteval void define_system_storage()
 	{
@@ -25,7 +24,7 @@ namespace pulse::ecs
 		auto entity_namespace_member_infos = std::meta::members_of(_entity_namespace_info, ctx);
 		for(auto member_info : entity_namespace_member_infos)
 		{
-			if(is_system(member_info))
+			if(pulse::ecs::utils::is_system(member_info))
 			{
 				auto system_type = std::meta::type_of(member_info);
 				auto system_storage_member_info = std::meta::data_member_spec(
