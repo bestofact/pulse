@@ -13,10 +13,4 @@ namespace pulse::ecs::module
 	{
 		std:: cout << "Init module 2" << std::endl;
 	}
-
-	bool test()
-	{
-		std:: cout << "test" << std::endl;
-		return false;
-	}
 }
