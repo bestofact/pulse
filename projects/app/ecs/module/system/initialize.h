@@ -8,9 +8,4 @@ namespace pulse::ecs::module
 	{
 		std:: cout << "Init module" << std::endl;
 	}
-
-	void Initialize2()
-	{
-		std:: cout << "Init module 2" << std::endl;
-	}
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include "ecs/core/systemexecution.h"
+#include "ecs/system/systemexecution.h"
 
 #include <meta>
 
