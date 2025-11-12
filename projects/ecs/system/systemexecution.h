@@ -1,25 +1,13 @@
 #pragma once
+
+#include "ecs/access/reader.h"
+#include "ecs/access/writer.h"
+
 #include <iostream>
 #include <meta>
 
 namespace pulse::ecs
 {
-
-	/*
-		Contains the required information to execute a system.
-		This struct is instantiated during compile-time for each system in a storage.
-		Stores the necessary system type information to execute the system and correct
-		the pointer offset for the SystemPointer member in the system storage.
-		While executing a system, we are rely on this execution info.
-	*/
-	template<typename _system_pointer_type, std::ptrdiff_t _system_pointer_member_offset>
-	struct SystemExecutionInfo
-	{
-		using SystemPointerType = _system_pointer_type;
-		using SystemFunctionPointerType = SystemPointerType::SystemFunctionPointerType;
-		using SystemType = std::remove_pointer_t<SystemFunctionPointerType>;
-		static constexpr inline std::ptrdiff_t s_system_pointer_member_offset = _system_pointer_member_offset;
-	};
 
 	/*
 		Executes a system with given system execution info.
@@ -29,7 +17,7 @@ namespace pulse::ecs
 		Each system in a storage instantiates it's own system execution info (as each pointer offset
 		is different for each system in a storage). Thus this execute_system is instantiated for
 		each system as well. 
-	*/
+	
 	template<typename _system_storage_type, typename _system_exection_info>
 	void execute_system(const _system_storage_type& in_system_storage)
 	{
@@ -43,4 +31,5 @@ namespace pulse::ecs
 	{
 		std::cout << "Debug System : " << _system_exection_info::s_system_pointer_member_offset << std::endl;
 	}
+	*/
 }

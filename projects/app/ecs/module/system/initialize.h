@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ecs/core/access.h"
 #include <iostream>
 
 namespace pulse::ecs::module

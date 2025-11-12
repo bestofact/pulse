@@ -5,7 +5,7 @@
 
 #include "ecs/scene/scene.h"
 
-namespace pulse::ecs::module
-{
-    using Scene = pulse::ecs::Scene<^^pulse::ecs::module, 1000u>;
-}
+//namespace pulse::ecs::module
+//{
+    //using Scene = pulse::ecs::Scene<^^pulse::ecs::module, 1000u>;
+//}
