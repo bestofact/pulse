@@ -11,6 +11,6 @@ namespace pulse::ecs::module
 
 	struct Fame
 	{
-		int m_lvl;
+		int m_lvl = 0;
 	};
 }

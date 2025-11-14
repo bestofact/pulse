@@ -1,11 +1,5 @@
 #pragma once
-#include "ecs/component/componentstorage.h"
-#include "ecs/component/componentindexer.h"
-#include "ecs/system/systemstorage.h"
-#include "ecs/system/systemexecutorsequential.h"
-#include "ecs/entity/entityinfo.h"
-#include "ecs/entity/entitystorage.h"
-#include "ecs/entity/entity.h"
+
 
 #include <cstddef>
 #include <meta>
@@ -15,23 +9,26 @@ namespace pulse::ecs
 {
 
 	template<std::meta::info _entity_namespace_info, std::size_t _entity_capacity>
-	struct Scene2
+	struct Scene
 	{
 		using Entity = std::size_t;
 		template<typename _component_type> using ComponentArray = std::array<_component_type, _entity_capacity>;
 
+		struct EntityStore;
 		struct ComponentArrayStore;
 		struct ComponentUtilityStore;
 		struct SystemFunctionStore;
 		struct SystemFunctionUtilityStore;
 
 		consteval static std::size_t invalid_index() { return static_cast<size_t>(-1); }
+		consteval static std::ptrdiff_t invalid_offset() { return static_cast<std::ptrdiff_t>(-1); }
+
 		consteval static std::meta::info get_entity_namespace_info() { return _entity_namespace_info; }
 		consteval static std::size_t get_entity_capacity() { return _entity_capacity; }
 		
 		consteval static bool is_component(std::meta::info in_info)
 		{
-			return std::meta::is_type(in_info);
+			return std::meta::is_complete_type(in_info);
 		}
 		
 		consteval static bool is_system(std::meta::info in_info)
@@ -85,7 +82,7 @@ namespace pulse::ecs
 
 			consteval static std::ptrdiff_t get_component_array_offset(std::meta::info in_component_type_info)
 			{
-				std::ptrdiff_t component_array_offset = 0;
+				std::ptrdiff_t component_array_offset = invalid_offset();
 
 			    (
 			    	((in_component_type_info == _component_meta_types::get_component_type_info())
@@ -202,16 +199,19 @@ namespace pulse::ecs
 		};
 
 		template<typename _component_type>
-		static const _component_type& get_component(
+		static std::decay_t<_component_type>& get_component(
 			const Entity in_entity, 
-			const ComponentArrayStore& in_component_array_store)
+			ComponentArrayStore& in_component_array_store)
 		{
-			constexpr auto component_type_info = ^^_component_type;
+			constexpr auto component_type_info = std::meta::decay(^^_component_type);
 			constexpr auto component_array_offset = ComponentUtility::get_component_array_offset(component_type_info);
 		
-			const auto* component_array_store_ptr = reinterpret_cast<const char*>(&in_component_array_store);
-			const auto* component_array_ptr = reinterpret_cast<const ComponentArray<_component_type>*>(component_array_store_ptr + component_array_offset);
-			const auto& component = (*component_array_ptr)[in_entity];		
+			static_assert(component_array_offset != invalid_offset());
+
+			auto* component_array_store_ptr = reinterpret_cast<char*>(&in_component_array_store);
+			auto* component_array_ptr = reinterpret_cast<ComponentArray<typename [:component_type_info:]>*>(component_array_store_ptr + component_array_offset);
+			auto& component = (*component_array_ptr)[in_entity];		
+			
 			return component;
 		}
 
@@ -225,7 +225,7 @@ namespace pulse::ecs
 			static void call(
 				const Entity in_entity,
 				const SystemFunctionStore& in_system_function_store,
-				const ComponentArrayStore& in_component_array_store)
+				ComponentArrayStore& in_component_array_store)
 			{
 				const auto* system_function_store_ptr = reinterpret_cast<const char*>(&in_system_function_store);
 				const auto* system_function_ptr = reinterpret_cast<const _system_function_type_info*>(system_function_store_ptr + _system_function_offset);
@@ -262,8 +262,7 @@ namespace pulse::ecs
 				for(const auto function_parameter_info : function_parameters_info)
 				{
 					const auto function_parameter_type_info = function_parameter_info;
-					const auto function_parameter_type_pure_info = std::meta::remove_cvref(function_parameter_type_info);
-					system_function_caller_template_argument_info.push_back(function_parameter_type_pure_info);
+					system_function_caller_template_argument_info.push_back(function_parameter_type_info);
 				}
 
 				const auto system_function_caller_template_type_info = ^^SystemFunctionCaller;
@@ -280,7 +279,7 @@ namespace pulse::ecs
 		static void call_system_function(
 			const Entity in_entity,
 			const SystemFunctionStore& in_system_function_store,
-			const ComponentArrayStore& in_component_array_store)
+			ComponentArrayStore& in_component_array_store)
 		{
 
 			constexpr auto system_function_caller_type_info = _system_function_meta_type::get_system_function_caller_type_info();
@@ -294,7 +293,7 @@ namespace pulse::ecs
 			static void call_system_functions_sequential(
 				const Entity in_entity,
 				const SystemFunctionStore& in_system_function_store,
-				const ComponentArrayStore& in_component_array_store)
+				ComponentArrayStore& in_component_array_store)
 			{
 				(call_system_function<_system_function_meta_types>(in_entity, in_system_function_store, in_component_array_store), ...);
 			}
@@ -399,6 +398,7 @@ namespace pulse::ecs
 			define_system_function_utility_store<SystemFunctionUtilityStore, SystemFunctionStore>();
 		}
 
+		EntityStore m_entity_store;
 		ComponentArrayStore m_component_array_store;
 		ComponentUtilityStore m_component_utility_store;
 		SystemFunctionStore m_system_function_store;
@@ -415,80 +415,7 @@ namespace pulse::ecs
 		template<typename _component_type>
 		const _component_type& get_component(const Entity in_entity)
 		{
-			return get_component<_component_type>(in_entity, m_component_array_store);
+			return get_component<_component_type&>(in_entity, m_component_array_store);
 		}
-	};
-
-
-
-	template<std::meta::info _entity_namespace_info, size_t _entity_capacity>
-	struct Scene
-	{
-		struct EntityInfoType;
-		struct EntityStorage;
-	    struct ComponentStorage;
-	    struct ComponentIndexer;
-	    struct SystemStorage;
-	    struct SystemExecutor;
-
-		static constexpr inline size_t s_entity_capacity = _entity_capacity;
-
-		consteval
-		{
-			constexpr auto entity_capacity = s_entity_capacity;
-
-		    pulse::ecs::define_component_storage<_entity_namespace_info, ComponentStorage, entity_capacity>();
-		    pulse::ecs::define_system_storage<_entity_namespace_info, SystemStorage>();
-		    pulse::ecs::define_system_executor_sequential<^^SystemStorage, ^^ComponentStorage, SystemExecutor>();
-
-		    pulse::ecs::define_component_indexer<^^ComponentStorage, ComponentIndexer>();
-			pulse::ecs::define_entity_info<_entity_namespace_info, EntityInfoType>();
-		    pulse::ecs::define_entity_storage<EntityStorage, EntityInfoType, entity_capacity>();
-		}
-
-	public:
-		template<typename _component_type>
-		constexpr size_t get_component_index()
-		{
-			return decltype(m_component_indexer.m_component_indexer)::template get_component_index<_component_type>();
-		}
-
-		template<typename _component_type>
-		void add_component(const size_t in_entity_index)
-		{
-			const auto component_index = get_component_index<_component_type>();
-			m_entity_storage.m_entities[in_entity_index].m_component_bitset.set(component_index);
-		}
-
-		template<typename _component_type>
-		void remove_component(const size_t in_entity_index)
-		{
-			const auto component_index = get_component_index<_component_type>();
-			m_entity_storage.m_entities[in_entity_index].m_component_bitset.reset(component_index);
-		}
-
-		template<typename _component_type>
-		bool has_component(const size_t in_entity_index)
-		{
-			const auto component_index = get_component_index<_component_type>();
-			return m_entity_storage.m_entities[in_entity_index].m_component_bitset[component_index];
-		}
-
-		void execute_systems_for_entity(pulse::ecs::Entity in_entity)
-		{
-			m_system_executor.m_system_executor.execute_systems(in_entity, m_system_storage, m_component_storage);
-		}
-
-		void debug_systems_for_entity(pulse::ecs::Entity in_entity)
-		{
-			m_system_executor.m_system_executor.debug_systems(in_entity, m_system_storage, m_component_storage);
-		}
-
-	public:
-		EntityStorage m_entity_storage;
-		ComponentStorage m_component_storage;
-		ComponentIndexer m_component_indexer;
-		SystemStorage m_system_storage;
-		SystemExecutor m_system_executor;
 	};
 }
