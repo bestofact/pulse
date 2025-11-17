@@ -1,7 +1,10 @@
 #pragma once
 
+#include "ecs/detail/componentwrapper.h"
 #include <cstddef>
+#include <format>
 #include <meta>
+#include <string_view>
 
 namespace pulse::ecs::__detail
 {
@@ -25,21 +28,33 @@ namespace pulse::ecs::__detail
 		return std::meta::is_function(in_info);
 	}
 
-	consteval inline std::meta::info get_component_list_template_type_info()
+	template<typename _EntityType>
+	inline std::size_t get_entity_index(const _EntityType in_entity)
 	{
-		return ^^std::array;
+		return in_entity.m_index;
 	}
 
-	consteval inline std::meta::info get_component_list_type_info(
-		std::meta::info in_componentTypeInfo, 
-		std::meta::info in_componentCountInfo)
+	template<
+		typename _ComponentWrapperType,
+		typename _ComponentStoreType,
+		typename _ComponentMetaRegistryType>
+	static std::decay_t<_ComponentWrapperType>& get_component_wrapper(
+		_ComponentStoreType& in_componentStore)
 	{
-		constexpr auto listInfo = get_component_list_template_type_info();
-		return std::meta::substitute(listInfo, { in_componentTypeInfo, in_componentCountInfo });
+		constexpr auto componentWrapperTypeInfo = std::meta::decay(^^_ComponentWrapperType);
+		constexpr auto componentTypeInfo = _ComponentWrapperType::get_component_type_info();
+		constexpr auto componentWrapperOffset = _ComponentMetaRegistryType::get_component_wrapper_offset(componentTypeInfo);
+	
+		static_assert(componentWrapperOffset != invalid_offset());
+
+		auto* storePtr = reinterpret_cast<char*>(&in_componentStore);
+		auto* componentWrapperPtr = reinterpret_cast<[:componentWrapperTypeInfo:]*>(storePtr + componentWrapperOffset);
+		return *componentWrapperPtr;
 	}
 
 	template<
 		typename _EntityType,
+		std::size_t _EntityCapacity,
 		typename _ComponentType,
 		typename _ComponentStoreType,
 		typename _ComponentMetaRegistryType>
@@ -48,16 +63,41 @@ namespace pulse::ecs::__detail
 		_ComponentStoreType& in_componentStore)
 	{
 		constexpr auto componentTypeInfo = std::meta::decay(^^_ComponentType);
-		constexpr auto componentOffset = _ComponentMetaRegistryType::get_component_offset(componentTypeInfo);
-		//constexpr auto componentListTypeInfo = get_component_list_type_info(componentTypeInfo, std::meta::reflect_constant(1000));
-	
-		static_assert(componentOffset != invalid_offset());
-
-		auto* storePtr = reinterpret_cast<char*>(&in_componentStore);
-		auto* component = reinterpret_cast<[:componentTypeInfo:]*>(storePtr + componentOffset + sizeof(_ComponentType) * static_cast<std::uint64_t>(in_entity));
-		//auto& component = (*componentsPtrPtr)[in_entity];		
+		constexpr auto entityCapacityInfo = std::meta::reflect_constant(_EntityCapacity);
+		constexpr auto componentWrapperTypeInfo = get_component_wrapper_type_info(componentTypeInfo, entityCapacityInfo);
 		
-		return *component;
+		auto& componentWrapper = get_component_wrapper<
+			typename [:componentWrapperTypeInfo:],
+			_ComponentStoreType,
+			_ComponentMetaRegistryType>(
+				in_componentStore
+		);
+
+		return componentWrapper.m_components[get_entity_index(in_entity)];
+	}
+
+	template<
+		typename _EntityType,
+		std::size_t _EntityCapacity,
+		typename _ComponentType,
+		typename _ComponentStoreType,
+		typename _ComponentMetaRegistryType>
+	static std::decay_t<_ComponentType>& get_entity_bitset(
+		const _EntityType in_entity, 
+		_ComponentStoreType& in_componentStore)
+	{
+		constexpr auto componentTypeInfo = std::meta::decay(^^_ComponentType);
+		constexpr auto entityCapacityInfo = std::meta::reflect_constant(_EntityCapacity);
+		constexpr auto componentWrapperTypeInfo = get_component_wrapper_type_info(componentTypeInfo, entityCapacityInfo);
+		
+		auto& componentWrapper = get_component_wrapper<
+			componentWrapperTypeInfo,
+			_ComponentStoreType,
+			_ComponentMetaRegistryType>(
+				in_componentStore
+		);
+
+		return componentWrapper.m_entityBitset[get_entity_index(in_entity)];
 	}
 
 	consteval void define_component_store(
@@ -74,14 +114,14 @@ namespace pulse::ecs::__detail
 		{
 			if(is_component(member))
 			{
-				const auto componentListInfo = get_component_list_type_info(member, in_entityCapacityInfo);
+				const auto componentWrapperTypeInfo = get_component_wrapper_type_info(member, in_entityCapacityInfo);
 				const auto componentIdentifier = std::meta::identifier_of(member);
-				const auto componentListMemberInfo = std::meta::data_member_spec(
-					componentListInfo,
+				const auto componentWrapperMemberInfo = std::meta::data_member_spec(
+					componentWrapperTypeInfo,
 					{ .name = componentIdentifier }
 				);
 
-				componentStoreMemberInfos.push_back(componentListMemberInfo);
+				componentStoreMemberInfos.push_back(componentWrapperMemberInfo);
 			}
 		}
 
@@ -109,18 +149,23 @@ namespace pulse::ecs::__detail
 				continue;
 			}
 
-			const auto componentListMemberInfo = member;
-			const auto componentListTypeInfo = std::meta::type_of(componentListMemberInfo);
-			const auto componentTypeInfo = std::meta::template_arguments_of(componentListTypeInfo)[0];
+			const auto memberType = std::meta::type_of(member);
+			const auto memberTemplate = std::meta::template_of(memberType);
+			if(memberTemplate != get_component_wrapper_template_info())
+			{
+				continue;
+			}
+
+			const auto componentTypeInfo = std::meta::template_arguments_of(memberType)[0];
 			
 			const auto componentIndexInfo = std::meta::reflect_constant(componentIndexCounter++);
 			
-			const auto componentListOffset = std::meta::offset_of(componentListMemberInfo);
-			const auto componentListOffsetInfo = std::meta::reflect_constant(componentListOffset.bytes);
+			const auto memberOffset = std::meta::offset_of(member);
+			const auto memberOffsetInfo = std::meta::reflect_constant(memberOffset.bytes);
 			
 			const auto componentMetaTypeInfo = std::meta::substitute(
 				in_componentMetaTemplateInfo,
-				{ componentTypeInfo, componentIndexInfo, componentListOffsetInfo }
+				{ componentTypeInfo, componentIndexInfo, memberOffsetInfo }
 			);
 
 			componentMetaRegistryMemberInfos.push_back(componentMetaTypeInfo);

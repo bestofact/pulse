@@ -2,12 +2,14 @@
 
 #include "ecs/detail/componentmeta.h"
 #include "ecs/detail/componentmetaregistry.h"
+#include "ecs/detail/componentwrapper.h"
 #include "ecs/detail/systemfunctioninvoker.h"
 #include "ecs/detail/systemfunctionwrapper.h"
 #include "ecs/detail/systemfunctionmeta.h"
 #include "ecs/detail/systemfunctionmetaregistry.h"
 #include "ecs/detail/utility.h"
 
+#include <bitset>
 #include <meta>
 
 namespace pulse::ecs
@@ -16,7 +18,11 @@ namespace pulse::ecs
 	struct Scene
 	{
 
-		using Entity = std::size_t;
+		struct Entity
+		{
+			consteval static std::size_t get_entity_capacity() { return _EntityCapacity; }
+			std::size_t m_index = __detail::invalid_index();
+		};
 
 		struct EntityStore{};
 		struct ComponentStore;
@@ -64,10 +70,49 @@ namespace pulse::ecs
 		const ComponentStore& get_component_store() { return m_componentStore; }
 		const SystemStore& get_system_store() { return m_systemStore; }
 
+		template<typename _ComponentType>
+		[:get_component_wrapper_type_info(^^_ComponentType, get_entity_capacity_info()):]&
+		get_component_wrapper(const Entity in_entity)
+		{
+			constexpr auto componentTypeInfo = ^^_ComponentType;
+			constexpr auto componentWrapperInfo = get_component_wrapper_type_info(componentTypeInfo, get_entity_capacity_info());
+			constexpr auto componentStoreTypeInfo = get_component_store_type_info();
+			constexpr auto componentMetaRegistryTypeInfo = get_component_meta_registry_type_info();
+
+			return __detail::get_component_wrapper<
+				([:componentWrapperInfo:]),
+				([:componentStoreTypeInfo:]),
+				([:componentMetaRegistryTypeInfo:])>(
+					m_componentStore
+			);
+		}
+
+		template<typename _ComponentType>
+		void add_component(const Entity in_entity)
+		{
+			auto& componentWrapper = get_component_wrapper<_ComponentType>();
+			componentWrapper.m_entityBitset.set(static_cast<size_t>(in_entity));
+		}
+
+		template<typename _ComponentType>
+		void remove_component(const Entity in_entity)
+		{
+			auto& componentWrapper = get_component_wrapper<_ComponentType>();
+			componentWrapper.m_entityBitset.reset(static_cast<size_t>(in_entity));
+		}
+
+		template<typename _ComponentType>
+		bool has_component(const Entity in_entity)
+		{
+			auto& componentWrapper = get_component_wrapper<_ComponentType>();
+			return componentWrapper.m_entityBitset[static_cast<std::size_t>(in_entity)];
+		}
+
 		void invoke_systems(const Entity in_entity)
 		{
 			SystemFunctionMetaRegistry::invoke_sequential(in_entity, m_systemStore, m_componentStore);
 		}
+
 	};
 
 }

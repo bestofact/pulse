@@ -20,13 +20,14 @@ namespace pulse::ecs::__detail
 			_ComponentStoreType& io_componentStore)
 		{
 			// Locate function wrapper using offset
+			constexpr std::size_t entityCapaicty = _EntityType::get_entity_capacity();
 			const auto* storePtr = reinterpret_cast<const char*>(&in_systemStore);
 			const auto* wrapperPtr = reinterpret_cast<const _SystemFunctionWrapperType*>(storePtr + _SystemFunctionOffset);
 		
 			// Call function with components as arguments
 			std::invoke(
 				wrapperPtr->m_functionPtr,
-				get_component<_EntityType, _FunctionParamTypes, _ComponentStoreType, _ComponentMetaRegistryType>(in_entity, io_componentStore)...
+				get_component<_EntityType, entityCapaicty, _FunctionParamTypes, _ComponentStoreType, _ComponentMetaRegistryType>(in_entity, io_componentStore)...
 			);
 		}
 	};

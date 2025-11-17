@@ -10,6 +10,8 @@ int main()
     using namespace pulse::ecs::module;
 
     Scene s;
+
+
     
     // add entity
     // add component
@@ -19,7 +21,7 @@ int main()
     {
         for(std::size_t e = 0; e < 10; ++e)
         {
-            s.invoke_systems(e);
+            s.invoke_systems({e});
         }
     }
    

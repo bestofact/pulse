@@ -42,17 +42,17 @@ namespace pulse::ecs::__detail
 			return result;
 		}
 
-		consteval static std::ptrdiff_t get_component_offset(std::meta::info in_component_type_info)
+		consteval static std::ptrdiff_t get_component_wrapper_offset(std::meta::info in_component_type_info)
 		{
 			std::ptrdiff_t result = invalid_offset();
-			WHEN_COMPONENT_META_MATCH(in_component_type_info, result = _ComponentMetas::get_component_offset());
+			WHEN_COMPONENT_META_MATCH(in_component_type_info, result = _ComponentMetas::get_component_wrapper_offset());
 			return result;
 		}
 
-		consteval static std::meta::info get_component_offset_info(std::meta::info in_component_type_info)
+		consteval static std::meta::info get_component_wrapper_offset_info(std::meta::info in_component_type_info)
 		{
 			std::meta::info result = std::meta::info();
-			WHEN_COMPONENT_META_MATCH(in_component_type_info, result = _ComponentMetas::get_component_offset_info());
+			WHEN_COMPONENT_META_MATCH(in_component_type_info, result = _ComponentMetas::get_component_wrapper_offset_info());
 			return result;
 		}
 	};
