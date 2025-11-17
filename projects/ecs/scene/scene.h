@@ -80,9 +80,9 @@ namespace pulse::ecs
 			constexpr auto componentMetaRegistryTypeInfo = get_component_meta_registry_type_info();
 
 			return __detail::get_component_wrapper<
-				([:componentWrapperInfo:]),
-				([:componentStoreTypeInfo:]),
-				([:componentMetaRegistryTypeInfo:])>(
+				typename [:componentWrapperInfo:],
+				typename [:componentStoreTypeInfo:],
+				typename [:componentMetaRegistryTypeInfo:]>(
 					m_componentStore
 			);
 		}
@@ -90,22 +90,22 @@ namespace pulse::ecs
 		template<typename _ComponentType>
 		void add_component(const Entity in_entity)
 		{
-			auto& componentWrapper = get_component_wrapper<_ComponentType>();
-			componentWrapper.m_entityBitset.set(static_cast<size_t>(in_entity));
+			auto& componentWrapper = get_component_wrapper<_ComponentType>(in_entity);
+			componentWrapper.m_entityBitset.set(__detail::get_entity_index(in_entity));
 		}
 
 		template<typename _ComponentType>
 		void remove_component(const Entity in_entity)
 		{
-			auto& componentWrapper = get_component_wrapper<_ComponentType>();
-			componentWrapper.m_entityBitset.reset(static_cast<size_t>(in_entity));
+			auto& componentWrapper = get_component_wrapper<_ComponentType>(in_entity);
+			componentWrapper.m_entityBitset.reset(__detail::get_entity_index(in_entity));
 		}
 
 		template<typename _ComponentType>
 		bool has_component(const Entity in_entity)
 		{
-			auto& componentWrapper = get_component_wrapper<_ComponentType>();
-			return componentWrapper.m_entityBitset[static_cast<std::size_t>(in_entity)];
+			auto& componentWrapper = get_component_wrapper<_ComponentType>(in_entity);
+			return componentWrapper.m_entityBitset[__detail::get_entity_index(in_entity)];
 		}
 
 		void invoke_systems(const Entity in_entity)
