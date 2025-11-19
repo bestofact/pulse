@@ -24,9 +24,14 @@ namespace pulse::ecs
 			std::size_t m_index = __detail::invalid_index();
 		};
 
-		struct EntityStore{};
+		struct EntityStore
+		{
+			std::bitset<_EntityCapacity> m_entityBitset;
+		};
+
 		struct ComponentStore;
 		struct SystemStore;
+		struct QueryStore;
 
 		consteval static std::meta::info get_entity_namespace_info() { return _EntityNamespaceInfo; }
 		consteval static std::size_t get_entity_capacity() { return _EntityCapacity; }
@@ -72,7 +77,7 @@ namespace pulse::ecs
 
 		template<typename _ComponentType>
 		[:get_component_wrapper_type_info(^^_ComponentType, get_entity_capacity_info()):]&
-		get_component_wrapper(const Entity in_entity)
+		get_component_wrapper()
 		{
 			constexpr auto componentTypeInfo = ^^_ComponentType;
 			constexpr auto componentWrapperInfo = get_component_wrapper_type_info(componentTypeInfo, get_entity_capacity_info());
@@ -90,21 +95,21 @@ namespace pulse::ecs
 		template<typename _ComponentType>
 		void add_component(const Entity in_entity)
 		{
-			auto& componentWrapper = get_component_wrapper<_ComponentType>(in_entity);
+			auto& componentWrapper = get_component_wrapper<_ComponentType>();
 			componentWrapper.m_entityBitset.set(__detail::get_entity_index(in_entity));
 		}
 
 		template<typename _ComponentType>
 		void remove_component(const Entity in_entity)
 		{
-			auto& componentWrapper = get_component_wrapper<_ComponentType>(in_entity);
+			auto& componentWrapper = get_component_wrapper<_ComponentType>();
 			componentWrapper.m_entityBitset.reset(__detail::get_entity_index(in_entity));
 		}
 
 		template<typename _ComponentType>
 		bool has_component(const Entity in_entity)
 		{
-			auto& componentWrapper = get_component_wrapper<_ComponentType>(in_entity);
+			auto& componentWrapper = get_component_wrapper<_ComponentType>();
 			return componentWrapper.m_entityBitset[__detail::get_entity_index(in_entity)];
 		}
 
@@ -113,6 +118,10 @@ namespace pulse::ecs
 			SystemFunctionMetaRegistry::invoke_sequential(in_entity, m_systemStore, m_componentStore);
 		}
 
+		void invoke_systems()
+		{
+			SystemFunctionMetaRegistry::invoke_sequential_query(m_systemStore, m_componentStore);
+		}
 	};
 
 }

@@ -25,6 +25,12 @@ namespace pulse::ecs
 			return std::meta::reflect_constant(get_entity_capacity());
 		}
 
+
+		ComponentWrapper()
+		{
+			m_entityBitset.reset();
+		}
+
 		std::bitset<_EntityCapacity> m_entityBitset;
 		std::array<_ComponentType, _EntityCapacity> m_components;
 	};

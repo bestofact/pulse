@@ -77,13 +77,11 @@ namespace pulse::ecs::__detail
 	}
 
 	template<
-		typename _EntityType,
 		std::size_t _EntityCapacity,
 		typename _ComponentType,
 		typename _ComponentStoreType,
 		typename _ComponentMetaRegistryType>
-	static std::decay_t<_ComponentType>& get_entity_bitset(
-		const _EntityType in_entity, 
+	static std::bitset<_EntityCapacity>& get_entity_bitset(
 		_ComponentStoreType& in_componentStore)
 	{
 		constexpr auto componentTypeInfo = std::meta::decay(^^_ComponentType);
@@ -91,13 +89,13 @@ namespace pulse::ecs::__detail
 		constexpr auto componentWrapperTypeInfo = get_component_wrapper_type_info(componentTypeInfo, entityCapacityInfo);
 		
 		auto& componentWrapper = get_component_wrapper<
-			componentWrapperTypeInfo,
+			typename [:componentWrapperTypeInfo:],
 			_ComponentStoreType,
 			_ComponentMetaRegistryType>(
 				in_componentStore
 		);
 
-		return componentWrapper.m_entityBitset[get_entity_index(in_entity)];
+		return componentWrapper.m_entityBitset;
 	}
 
 	consteval void define_component_store(
