@@ -259,18 +259,7 @@ namespace pulse::ecs::__detail
 			in_systemFunctionMetaRegistryTemplateInfo,
 			systemFunctionMetaRegistryTemplateArgumentInfos
 		);
-		return systemFunctionMetaRegistryTypeInfo;
-		/**
-		const auto system_function_utility_implementation_member_info = std::meta::data_member_spec(
-			system_function_utility_implementation_type_info,
-			{ .name = "m_system_function_utility_implementation" }
-		);
 		
-		const auto system_function_utility_store_type_info = ^^_system_function_utility_store_type;
-		std::meta::define_aggregate(
-			system_function_utility_store_type_info,
-			{ system_function_utility_implementation_member_info }
-		);
-		*/
+		return systemFunctionMetaRegistryTypeInfo;
 	}
 }

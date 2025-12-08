@@ -17,7 +17,6 @@ namespace pulse::ecs
 	template<std::meta::info _EntityNamespaceInfo, std::size_t _EntityCapacity>
 	struct Scene
 	{
-
 		struct Entity
 		{
 			consteval static std::size_t get_entity_capacity() { return _EntityCapacity; }

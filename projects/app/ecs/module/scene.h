@@ -5,7 +5,11 @@
 
 #include "ecs/scene/scene.h"
 
+#include "ecs/v3/entity/entitycapacity.h"
+
 namespace pulse::ecs::module
 {
-    using Scene = pulse::ecs::Scene<^^pulse::ecs::module, 1000u>;
+    static constexpr auto s_entityCapacity = pulse::ecs::EntityCapacity(1000);
+
+    using Scene = pulse::ecs::Scene<^^pulse::ecs::module, s_entityCapacity>;
 }
