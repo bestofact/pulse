@@ -3,7 +3,6 @@
 #include <meta>
 #include "ecs/v3/component/componentpool.h"
 #include "ecs/v3/component/componentstore.h"
-#include "ecs/v3/entity/entitycapacity.h"
 #include "ecs/v3/concepts/componentconcept.h"
 #include "ecs/v3/concepts/componentpoolconcept.h"
 #include "ecs/v3/utils/detail.h"

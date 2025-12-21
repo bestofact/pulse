@@ -1,8 +1,8 @@
 #pragma once
 
-
 #include "ecs/v3/concepts/componentconcept.h"
-#include "ecs/v3/concepts/componentpoolconcept.h"
+#include "ecs/v3/utils/detail.h"
+#include <bitset>
 #include <cstddef>
 #include <meta>
 #include <array>
@@ -13,6 +13,9 @@
 		 : (FalseBody), false)\
 		|| ...\
 		)
+
+#define FOR_EACH_VARIADIC_ARGUMENT(Body)\
+    ((Body), ...)
 
 namespace pulse::ecs
 {
@@ -34,6 +37,28 @@ namespace pulse::ecs
         consteval static std::size_t get_component_count()
         {
            	return sizeof...(COMPONENT_TYPES);
+        }
+
+        consteval static std::meta::info get_first_component_type_info()
+        {
+            const std::array<std::meta::info, get_component_count()> componentTypeInfos = {
+                ^^COMPONENT_TYPES...
+            };
+            return componentTypeInfos[0];
+        }
+
+        consteval static std::meta::info get_entity_type_info()
+        {
+            const auto firstComponentTypeInfo = get_first_component_type_info();
+            return pulse::ecs::utils::get_entity_type_info(firstComponentTypeInfo);
+        }
+
+        consteval static std::size_t get_entity_capacity_value()
+        {
+            const auto firstComponentTypeInfo = get_first_component_type_info();
+            const auto capacityMemberInfo = pulse::ecs::utils::get_entity_capacity_member_info(firstComponentTypeInfo);
+            const auto value = std::meta::extract<std::size_t>(capacityMemberInfo);
+            return value;
         }
 
         consteval static std::size_t get_component_index(std::meta::info in_componentTypeInfo)
@@ -79,11 +104,7 @@ namespace pulse::ecs
             std::meta::define_aggregate(get_component_store_impl_type_info(), get_component_pool_data_member_specs());
 		}
 
-	private:
-		[:get_component_store_impl_type_info():] m_componentStoreImpl;
-	public:
-
-    	consteval std::meta::info get_component_pool_member_info(std::meta::info in_componentTypeInfo) const
+        consteval static std::meta::info get_component_pool_member_info(std::meta::info in_componentTypeInfo)
         {
             constexpr auto ctx = std::meta::access_context::unchecked();
             const auto componentPoolTypeInfo = get_component_pool_type_info(in_componentTypeInfo);
@@ -101,44 +122,100 @@ namespace pulse::ecs
             return std::meta::info();
         }
 
-        template<std::meta::info COMPONENT_TYPE>
-        auto get_component_pool_ref()
-            -> typename [:std::meta::add_lvalue_reference(get_component_pool_type_info(COMPONENT_TYPE)):]
+        consteval static std::ptrdiff_t get_component_pool_member_offset(std::meta::info in_componentTypeInfo)
         {
-            constexpr auto componentPoolPtrTypeInfo = std::meta::add_pointer(get_component_pool_type_info(COMPONENT_TYPE));
-            const auto memberInfo = get_component_pool_member_info(COMPONENT_TYPE);
-            const auto memberOffsetInfo = std::meta::offset_of(memberInfo);
-            auto* memberPtr = reinterpret_cast<char*>(&m_componentStoreImpl) + memberOffsetInfo.bytes;
-            auto* memberPtrTyped = reinterpret_cast<typename [:componentPoolPtrTypeInfo:]>(memberPtr);
-            return *memberPtrTyped;
+            const auto memberInfo = get_component_pool_member_info(in_componentTypeInfo);
+            const auto memberInfoOffset = std::meta::offset_of(memberInfo);
+            return memberInfoOffset.bytes;
         }
 
-        template<std::meta::info COMPONENT_TYPE>
-        auto get_component_pool_ref() const
-            -> typename [:std::meta::add_const(std::meta::add_lvalue_reference(get_component_pool_type_info(COMPONENT_TYPE))):]
-        {
-            constexpr auto componentPoolPtrTypeInfo = std::meta::add_const(std::meta::add_pointer(get_component_pool_type_info(COMPONENT_TYPE)));
-            const auto memberInfo = get_component_pool_member_info(COMPONENT_TYPE);
-            const auto memberOffsetInfo = std::meta::offset_of(memberInfo);
-            auto* memberPtr = reinterpret_cast<const char*>(&m_componentStoreImpl) + memberOffsetInfo.bytes;
-            auto* memberPtrTyped = reinterpret_cast<const typename [:componentPoolPtrTypeInfo:]>(memberPtr);
-            return *memberPtrTyped;
-        }
+	private:
+		[:get_component_store_impl_type_info():] m_componentStoreImpl;
 
 #pragma endregion meta
 
+    public:
+
         template<pulse::ecs::concepts::Component COMPONENT_TYPE>
-        constexpr const [:get_component_pool_type_info(^^COMPONENT_TYPE):]& get_component_pool() const
+        const auto& get_component_pool() const
         {
-            return get_component_pool_ref<^^COMPONENT_TYPE>();
+            constexpr auto memberInfo = get_component_pool_member_info(^^COMPONENT_TYPE);
+            return m_componentStoreImpl.[:memberInfo:];
         }
 
         template<pulse::ecs::concepts::Component COMPONENT_TYPE>
-        constexpr [:get_component_pool_type_info(^^COMPONENT_TYPE):]& get_component_pool()
+        auto& get_component_pool()
         {
-            return get_component_pool_ref<^^COMPONENT_TYPE>();
+            constexpr auto memberInfo = get_component_pool_member_info(^^COMPONENT_TYPE);
+            return m_componentStoreImpl.[:memberInfo:];
+        }
+
+        template<pulse::ecs::concepts::Component COMPONENT_TYPE>
+        const auto& get_component(
+            const [:pulse::ecs::utils::get_entity_type_info(^^COMPONENT_TYPE):] in_entity)
+        {
+            const auto& componentPool = get_component_pool<COMPONENT_TYPE>();
+            const auto& componentArray = componentPool.get_component_array();
+            return componentArray[in_entity.get_index()];
+        }
+
+        template<pulse::ecs::concepts::Component COMPONENT_TYPE>
+        auto& get_component(
+            const [:get_entity_type_info():] in_entity)
+        {
+            auto& componentPool = get_component_pool<COMPONENT_TYPE>();
+            auto& componentArray = componentPool.get_component_array();
+            return componentArray[in_entity.get_index()];
+        }
+
+        template<pulse::ecs::concepts::Component... TARGET_COMPONENT_TYPES>
+        std::bitset<get_entity_capacity_value()> get_component_bitset() const
+        {
+            std::bitset<get_entity_capacity_value()> componentBitset;
+            componentBitset.set();
+
+            FOR_EACH_VARIADIC_ARGUMENT(
+                componentBitset &= get_component_pool<TARGET_COMPONENT_TYPES>().get_component_bitset()
+            );
+        
+            return componentBitset;
+        }
+
+        template<pulse::ecs::concepts::Component... TARGET_COMPONENT_TYPES>
+        void set_component_bitset(
+            const [:get_entity_type_info():] in_entity)
+        {
+            FOR_EACH_VARIADIC_ARGUMENT(
+                get_component_pool<TARGET_COMPONENT_TYPES>().get_component_bitset().set(in_entity.get_index())
+            );
+        }
+
+        template<pulse::ecs::concepts::Component... TARGET_COMPONENT_TYPES>
+        void reset_component_bitset(
+            const [:get_entity_type_info():] in_entity)
+        {
+            FOR_EACH_VARIADIC_ARGUMENT(
+                get_component_pool<TARGET_COMPONENT_TYPES>().get_component_bitset().reset(in_entity.get_index())
+            );
+        }
+
+        template<pulse::ecs::concepts::Component... TARGET_COMPONENT_TYPES>
+        void set_component_bitset()
+        {
+            FOR_EACH_VARIADIC_ARGUMENT(
+                get_component_pool<TARGET_COMPONENT_TYPES>().get_component_bitset().set()
+            );
+        }
+
+        template<pulse::ecs::concepts::Component... TARGET_COMPONENT_TYPES>
+        void reset_component_bitset()
+        {
+            FOR_EACH_VARIADIC_ARGUMENT(
+                get_component_pool<TARGET_COMPONENT_TYPES>().get_component_bitset().reset()
+            );
         }
 	};
 }
 
+#undef FOR_EACH_VARIADIC_ARGUMENT
 #undef UNTIL_COMPONENT_TYPE_INFO_MATCH

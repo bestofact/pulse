@@ -3,7 +3,6 @@
 #include <bit>
 #include <cstddef>
 
-#include "ecs/v3/entity/entitycapacity.h"
 #include "ecs/v3/concepts/entitycapacityconcept.h"
 
 namespace pulse::ecs
