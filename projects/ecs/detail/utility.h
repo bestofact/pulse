@@ -8,9 +8,9 @@
 
 namespace pulse::ecs::__detail
 {
-	consteval inline std::size_t invalid_index() 
+	consteval inline std::size_t invalid_index()
 	{
-		return static_cast<std::size_t>(-1); 
+		return static_cast<std::size_t>(-1);
 	}
 
 	consteval inline std::ptrdiff_t invalid_offset()
@@ -22,7 +22,7 @@ namespace pulse::ecs::__detail
 	{
 		return std::meta::is_complete_type(in_info);
 	}
-	
+
 	consteval static bool is_system(std::meta::info in_info)
 	{
 		return std::meta::is_function(in_info);
@@ -44,7 +44,7 @@ namespace pulse::ecs::__detail
 		constexpr auto componentWrapperTypeInfo = std::meta::decay(^^_ComponentWrapperType);
 		constexpr auto componentTypeInfo = _ComponentWrapperType::get_component_type_info();
 		constexpr auto componentWrapperOffset = _ComponentMetaRegistryType::get_component_wrapper_offset(componentTypeInfo);
-	
+
 		static_assert(componentWrapperOffset != invalid_offset());
 
 		auto* storePtr = reinterpret_cast<char*>(&in_componentStore);
@@ -59,13 +59,13 @@ namespace pulse::ecs::__detail
 		typename _ComponentStoreType,
 		typename _ComponentMetaRegistryType>
 	static std::decay_t<_ComponentType>& get_component(
-		const _EntityType in_entity, 
+		const _EntityType in_entity,
 		_ComponentStoreType& in_componentStore)
 	{
 		constexpr auto componentTypeInfo = std::meta::decay(^^_ComponentType);
 		constexpr auto entityCapacityInfo = std::meta::reflect_constant(_EntityCapacity);
 		constexpr auto componentWrapperTypeInfo = get_component_wrapper_type_info(componentTypeInfo, entityCapacityInfo);
-		
+
 		auto& componentWrapper = get_component_wrapper<
 			typename [:componentWrapperTypeInfo:],
 			_ComponentStoreType,
@@ -87,7 +87,7 @@ namespace pulse::ecs::__detail
 		constexpr auto componentTypeInfo = std::meta::decay(^^_ComponentType);
 		constexpr auto entityCapacityInfo = std::meta::reflect_constant(_EntityCapacity);
 		constexpr auto componentWrapperTypeInfo = get_component_wrapper_type_info(componentTypeInfo, entityCapacityInfo);
-		
+
 		auto& componentWrapper = get_component_wrapper<
 			typename [:componentWrapperTypeInfo:],
 			_ComponentStoreType,
@@ -155,12 +155,12 @@ namespace pulse::ecs::__detail
 			}
 
 			const auto componentTypeInfo = std::meta::template_arguments_of(memberType)[0];
-			
+
 			const auto componentIndexInfo = std::meta::reflect_constant(componentIndexCounter++);
-			
+
 			const auto memberOffset = std::meta::offset_of(member);
 			const auto memberOffsetInfo = std::meta::reflect_constant(memberOffset.bytes);
-			
+
 			const auto componentMetaTypeInfo = std::meta::substitute(
 				in_componentMetaTemplateInfo,
 				{ componentTypeInfo, componentIndexInfo, memberOffsetInfo }
@@ -173,7 +173,7 @@ namespace pulse::ecs::__detail
 			in_componentMetaRegistryTemplateInfo,
 			componentMetaRegistryMemberInfos
 		);
-		
+
 		return componentMetaRegistryTypeInfo;
 	}
 
@@ -194,7 +194,7 @@ namespace pulse::ecs::__detail
 				const auto functionInfo = member;
 				const auto functionTypeInfo = std::meta::type_of(functionInfo);
 				const auto systemFunctionWrapperTypeInfo = std::meta::substitute(
-					in_systemFunctionWrapperTemplateInfo, 
+					in_systemFunctionWrapperTemplateInfo,
 					{ functionTypeInfo, functionInfo }
 				);
 
@@ -243,10 +243,10 @@ namespace pulse::ecs::__detail
 			const auto systemFunctionWrapperTypeInfo = std::meta::type_of(systemFunctionWrapperMemberInfo);
 
 			const auto functionIndexInfo = std::meta::reflect_constant(functionIndexCounter++);
-			
+
 			const auto systemFunctionWrapperOffset = std::meta::offset_of(systemFunctionWrapperMemberInfo);
 			const auto systemFunctionWrapperOffsetInfo = std::meta::reflect_constant(systemFunctionWrapperOffset.bytes);
-			
+
 			const auto systemFunctionMetaTypeInfo = std::meta::substitute(
 				in_systemFunctionMetaTemplateInfo,
 				{ systemFunctionWrapperTypeInfo, functionIndexInfo, systemFunctionWrapperOffsetInfo }
@@ -259,7 +259,7 @@ namespace pulse::ecs::__detail
 			in_systemFunctionMetaRegistryTemplateInfo,
 			systemFunctionMetaRegistryTemplateArgumentInfos
 		);
-		
+
 		return systemFunctionMetaRegistryTypeInfo;
 	}
 }

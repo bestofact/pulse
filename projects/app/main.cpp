@@ -12,7 +12,7 @@
 namespace pulse::ecs::humanoid
 {
     using Entity = pulse::ecs::Entity<std::size_t, 2000>;
-    
+
     struct Position final
     {
         int x = 0;
@@ -38,7 +38,7 @@ namespace pulse::ecs::humanoid
 
     void Foo(const Position& in_position)
     {
-
+        std::print("Hello!");
     }
 
 /**
@@ -55,7 +55,7 @@ namespace pulse::ecs::humanoid
     struct remove{ T m_data; };
 
 
-    
+
     // This system outputs a Velocity value for each entity with input component.
     output<Velocity> UpdateVelocity(const Input& in_input)
     {
@@ -66,7 +66,7 @@ namespace pulse::ecs::humanoid
         return {v};
     }
 
-    
+
     // This system reads velocity outputs (depends on all other systems that outputs a velocity)
     //  and returns another velocity output.
     output<Velocity> ClampVelocity(input<Velocity> in_velocityInput)
@@ -106,8 +106,7 @@ namespace pulse::ecs::humanoid
 
 consteval
 {
-    constexpr auto a = pulse::ecs::utils::get_entity_capacity_member_info(^^pulse::ecs::humanoid);
-    constexpr auto v = std::meta::extract<std::size_t>(a);
+
 }
 
 int main()
@@ -115,15 +114,16 @@ int main()
     using World = pulse::ecs::World<^^pulse::ecs::humanoid>;
     World humanoidEcs;
     const auto& pool = humanoidEcs.m_componentStore.get_component_pool<pulse::ecs::humanoid::Position>();
-    
 
+    pulse::ecs::humanoid::Entity e;
+    e.set_index(2);
+    humanoidEcs.m_componentStore.set_component_bitset<pulse::ecs::humanoid::Position>(e);
 
-    /**
     auto s = pulse::ecs::System<decltype(pulse::ecs::humanoid::Foo), &pulse::ecs::humanoid::Foo>();
-    s.invoke<
-        decltype(humanoidEcs.m_componentStore)>(
+    s.invoke<decltype(humanoidEcs.m_componentStore)>(
             humanoidEcs.m_componentStore
-    );*/
+    );
+
     //using namespace pulse::ecs::module;
 
     //Scene s;

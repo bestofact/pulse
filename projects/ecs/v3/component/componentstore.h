@@ -129,7 +129,7 @@ namespace pulse::ecs
             return memberInfoOffset.bytes;
         }
 
-	private:
+	//private:
 		[:get_component_store_impl_type_info():] m_componentStoreImpl;
 
 #pragma endregion meta
@@ -160,7 +160,7 @@ namespace pulse::ecs
         }
 
         template<pulse::ecs::concepts::Component COMPONENT_TYPE>
-        auto& get_component(
+        auto& get_component_mutable(
             const [:get_entity_type_info():] in_entity)
         {
             auto& componentPool = get_component_pool<COMPONENT_TYPE>();
@@ -177,7 +177,7 @@ namespace pulse::ecs
             FOR_EACH_VARIADIC_ARGUMENT(
                 componentBitset &= get_component_pool<TARGET_COMPONENT_TYPES>().get_component_bitset()
             );
-        
+
             return componentBitset;
         }
 

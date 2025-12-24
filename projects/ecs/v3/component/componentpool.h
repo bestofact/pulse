@@ -46,26 +46,22 @@ namespace pulse::ecs
 			return std::meta::substitute(arrayInfo, {componentTypeInfo, entityCapacityValueInfo});
 		}
 
-		consteval auto get_component_bitset() const
-			-> const [:get_component_bitset_type_info():]&
+		auto get_component_bitset() const -> const [:get_component_bitset_type_info():]&
 		{
 			return m_componentBitset;
 		}
 
-		consteval auto get_component_array() const
-			-> const [:get_component_array_type_info():]&
+		auto get_component_array() const -> const [:get_component_array_type_info():]&
 		{
 			return m_componentArray;
 		}
 
-		consteval auto get_component_bitset()
-			-> [:get_component_bitset_type_info():]&
+		auto get_component_bitset() -> [:get_component_bitset_type_info():]&
 		{
 			return m_componentBitset;
 		}
 
-		consteval auto get_component_array()
-			-> [:get_component_array_type_info():]&
+		auto get_component_array() -> [:get_component_array_type_info():]&
 		{
 			return m_componentArray;
 		}
