@@ -27,6 +27,7 @@
 
 #include <meta>
 #include <print>
+#include <type_traits>
 
 
 namespace pulse::ecs::module
@@ -66,10 +67,6 @@ namespace pulse::ecs::module
         u32 m_value = 0;
     };
 
-    
-
-    
-
     void Aoo(const Config&)
     {
         std::println("Aoo");
@@ -101,65 +98,32 @@ namespace pulse::ecs::module
 
     OutputHandle<Result3> Foo(const Result2& in_result)
     {
-        std::println("Foo");
-        return {};
+        OutputHandle<Result3> out;
+        std::println("Foo : {0}", in_result.m_value);
+        out.set_result(Result3{in_result.m_value + 1});
+        return out;
     }
 
     void Goo(const Result3& in_r)
     {
-        std::println("Goo");
+        std::println("Goo : {0}", in_r.m_value);
     }
-
-
-}
-
-struct Test;
-
-consteval
-{
-    std::vector<std::meta::info> members;
-
-    const auto add_member = [&](std::meta::info in_type)
-    {
-        members.push_back(std::meta::data_member_spec(in_type));
-    };
-
-    const auto add_member_int = [&]()
-    {
-        members.push_back(std::meta::data_member_spec(^^int));
-    };
-
-    const auto add_member_n = [&](auto id)
-    {
-        members.push_back(std::meta::data_member_spec(^^int, {.name=id}));
-    };
-
-    constexpr auto ctx = std::meta::access_context::unchecked();
-    constexpr auto modulens = ^^pulse::ecs::module;
-    constexpr auto config = ^^pulse::ecs::module::Config;
-
-    using Acc = pulse::ecs::DataAccess<const pulse::ecs::module::Result&>;
-    constexpr bool b = pulse::ecs::meta::is_output(Acc::get_data_type());
-    if(b)
-    {
-        add_member_n("true");
-    }
-
-    std::meta::define_aggregate(^^Test, members);
 }
 
 int main()
 {
 
     using World = [:pulse::ecs::generators::generate_default_world(^^pulse::ecs::module):];
-    
     World w;
+
     w.add_component<pulse::ecs::module::Config, pulse::ecs::module::Name>(w.new_entity());
     w.add_component<pulse::ecs::module::Name>(w.new_entity());
     w.add_component<pulse::ecs::module::Size, pulse::ecs::module::Config>(w.new_entity());
     w.add_component<pulse::ecs::module::Size, pulse::ecs::module::Name>(w.new_entity());
     w.add_component<pulse::ecs::module::Config>(w.new_entity());
-
+    w.apply_component_modifications();
+    
     w.invoke_systems();
+
     return 0;
 }

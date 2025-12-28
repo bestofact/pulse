@@ -112,22 +112,34 @@ namespace pulse::ecs
 
 #pragma endregion
 
+		template<pulse::ecs::concepts::ArchetypeChunk CHUNK_TYPE>
+		const auto& get_archetype_chunk() const
+		{
+			constexpr auto member = get_store_member(^^CHUNK_TYPE);
+			const auto& chunk = m_store.[:member:];
+			return chunk;
+		}
+
+		template<pulse::ecs::concepts::ArchetypeChunk CHUNK_TYPE>
+		auto& get_archetype_chunk_mutable()
+		{
+			constexpr auto member = get_store_member(^^CHUNK_TYPE);
+			auto& chunk = m_store.[:member:];
+			return chunk;
+		}
+
 		template<pulse::ecs::concepts::Data DATA_TYPE>
 		const auto& get_archetype_chunk() const
 		{
 			constexpr auto archetypeChunkType = get_archetype_chunk_type_for_data_type(^^DATA_TYPE);
-			constexpr auto member = get_store_member(archetypeChunkType);
-			const auto& chunk = m_store.[:member:];
-			return chunk;
+			return get_archetype_chunk<typename [:archetypeChunkType:]>();
 		}
 
 		template<pulse::ecs::concepts::Data DATA_TYPE>
 		auto& get_archetype_chunk_mutable()
 		{
 			constexpr auto archetypeChunkType = get_archetype_chunk_type_for_data_type(^^DATA_TYPE);
-			constexpr auto member = get_store_member(archetypeChunkType);
-			auto& chunk = m_store.[:member:];
-			return chunk;
+			return get_archetype_chunk_mutable<typename [:archetypeChunkType:]>();
 		}
 
 	private:

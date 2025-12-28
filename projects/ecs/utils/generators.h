@@ -25,6 +25,7 @@ namespace __detail
 		return store;
 	}
 
+	template<pulse::ecs::EArchetypeChunkModificationMethod MODIFICATION_METHOD>
 	consteval std::meta::info generate_sparse_archetype_store(std::vector<std::meta::info> in_types)
 	{
 		constexpr auto archetypeTemplate = ^^pulse::ecs::ArchetypeChunk;
@@ -33,7 +34,7 @@ namespace __detail
 		std::vector<std::meta::info> archetypes;
 		for(const auto type : in_types)
 		{
-			const auto archetype = std::meta::substitute(archetypeTemplate, { type });
+			const auto archetype = std::meta::substitute(archetypeTemplate, { std::meta::reflect_constant(MODIFICATION_METHOD), type });
 			archetypes.push_back(archetype);
 		}
 
@@ -76,13 +77,13 @@ namespace __detail
 	consteval std::meta::info generate_default_component_store(std::meta::info in_namespace)
 	{
 		const auto components = pulse::ecs::collectors::collect_component_types(in_namespace);
-		return __detail::generate_sparse_archetype_store(components);
+		return __detail::generate_sparse_archetype_store<pulse::ecs::EArchetypeChunkModificationMethod::Deferred>(components);
 	}
 
 	consteval std::meta::info generate_default_output_store(std::meta::info in_namespace)
 	{
 		const auto outputs = pulse::ecs::collectors::collect_output_types(in_namespace);
-		return __detail::generate_sparse_archetype_store(outputs);
+		return __detail::generate_sparse_archetype_store<pulse::ecs::EArchetypeChunkModificationMethod::Immediate>(outputs);
 	}
 
 	consteval std::meta::info generate_default_system_store(std::meta::info in_namespace)

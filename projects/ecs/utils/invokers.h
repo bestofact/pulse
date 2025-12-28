@@ -165,15 +165,14 @@ namespace __detail
 			)...
 		);
 
-		constexpr auto count = OUTPUT_HANDLE_TYPE::get_output_count();
-		template for(constexpr pulse::u64 index : std::views::iota((pulse::u64)0, count))
+		template for(constexpr auto type : OUTPUT_HANDLE_TYPE::get_output_types())
 		{
-			constexpr auto type = OUTPUT_HANDLE_TYPE::get_nth_output_type(index);
 			if(handle.template has_result<typename [:type:]>())
 			{
 				auto& chunk = out_outputStore.template get_archetype_chunk_mutable<typename [:type:]>();
 				auto& data = chunk.template get_data_mutable<ENTITY_TYPE, typename [:type:]>(in_entity);
 				data = handle.template get_result<typename [:type:]>();
+				chunk.template set_occupation<ENTITY_TYPE, typename[:type:]>(in_entity);
 			}
 		}
 	}

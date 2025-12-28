@@ -12,14 +12,21 @@
 
 namespace pulse::ecs
 {
-	template<pulse::ecs::concepts::Data... DATA_TYPES>
+	enum class EArchetypeChunkModificationMethod : pulse::u8
+	{
+		Immediate = 0,
+		Deferred = 1,
+	};
+
+	template<
+		EArchetypeChunkModificationMethod MODIFICATION_METHOD, 
+		pulse::ecs::concepts::Data... DATA_TYPES>
 	struct ArchetypeChunk
 	{
 		struct Archetype;
 		struct Occupation;
 
 #pragma region --------------------- META -----------------------
-
 		consteval static pulse::u64 get_entity_capacity()
 		{
 			const auto info = pulse::meta::get_first_arg<DATA_TYPES...>();
@@ -133,14 +140,30 @@ namespace pulse::ecs
 
 #pragma endregion
 
+		consteval static pulse::ecs::EArchetypeChunkModificationMethod get_modification_method()
+		{
+			return MODIFICATION_METHOD;
+		}
+
+		consteval static pulse::u32 get_occupation_count()
+		{
+			return static_cast<pulse::u32>(get_modification_method()) + 1;
+		}
+
+		consteval static pulse::u32 get_occupation_index(pulse::ecs::EArchetypeChunkModificationMethod in_method)
+		{
+			return static_cast<pulse::u64>(in_method);
+		}
+
+private:
 		template<pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
-		std::bitset<get_entity_capacity()> get_occupation() const
+		std::bitset<get_entity_capacity()> get_occupation(const pulse::u64 in_index) const
 		{
 			std::bitset<get_entity_capacity()> result;
 			result.set();
 
 			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
-				result &= m_occupations.[:get_occupation_member(^^TARGET_DATA_TYPES):]
+				result &= m_occupations[in_index].[:get_occupation_member(^^TARGET_DATA_TYPES):]
 			);
 
 			return result;
@@ -149,10 +172,61 @@ namespace pulse::ecs
 		template<
 			pulse::ecs::concepts::Entity ENTITY_TYPE,
 			pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
-		bool test_occupation(const ENTITY_TYPE in_entity) const
+		bool test_occupation(const ENTITY_TYPE in_entity, const pulse::u64 in_index) const
 		{
 			const auto occupation = get_occupation<TARGET_DATA_TYPES...>();
-			return occupation.test(in_entity.get_index());
+			return occupation[in_index].test(in_entity.get_index());
+		}
+
+		template<
+			pulse::ecs::concepts::Entity ENTITY_TYPE,
+			pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
+		void set_occupation(const ENTITY_TYPE in_entity, const pulse::u64 in_index)
+		{
+			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
+				m_occupations[in_index].[:get_occupation_member(^^TARGET_DATA_TYPES):].set(in_entity.get_index())
+			);
+		}
+
+		template<
+			pulse::ecs::concepts::Entity ENTITY_TYPE,
+			pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
+		void reset_occupation(const ENTITY_TYPE in_entity, const pulse::u64 in_index)
+		{
+			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
+				m_occupations[in_index].[:get_occupation_member(^^TARGET_DATA_TYPES):].reset(in_entity.get_index())
+			);
+		}
+
+		template<pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
+		void set_occupations(const pulse::u64 in_index)
+		{
+			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
+				m_occupations[in_index].[:get_occupation_member(^^TARGET_DATA_TYPES):].set()
+			);
+		}
+
+		template<pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
+		void reset_occupations(const pulse::u64 in_index)
+		{
+			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
+				m_occupations[in_index].[:get_occupation_member(^^TARGET_DATA_TYPES):].reset()
+			);
+		}
+
+public:
+		template<pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
+		std::bitset<get_entity_capacity()> get_occupation() const
+		{
+			return get_occupation<TARGET_DATA_TYPES...>(get_occupation_index(EArchetypeChunkModificationMethod::Immediate));
+		}
+
+		template<
+			pulse::ecs::concepts::Entity ENTITY_TYPE,
+			pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
+		bool test_occupation(const ENTITY_TYPE in_entity) const
+		{
+			return test_occupation<ENTITY_TYPE, TARGET_DATA_TYPES...>(in_entity, get_occupation_index(EArchetypeChunkModificationMethod::Immediate));
 		}
 
 		template<
@@ -160,9 +234,7 @@ namespace pulse::ecs
 			pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
 		void set_occupation(const ENTITY_TYPE in_entity)
 		{
-			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
-				m_occupations.[:get_occupation_member(^^TARGET_DATA_TYPES):].set(in_entity.get_index())
-			);
+			set_occupation<ENTITY_TYPE, TARGET_DATA_TYPES...>(in_entity, get_occupation_index(get_modification_method()));
 		}
 
 		template<
@@ -170,26 +242,43 @@ namespace pulse::ecs
 			pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
 		void reset_occupation(const ENTITY_TYPE in_entity)
 		{
-			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
-				m_occupations.[:get_occupation_member(^^TARGET_DATA_TYPES):].reset(in_entity.get_index())
-			);
+			reset_occupation<ENTITY_TYPE, TARGET_DATA_TYPES...>(in_entity, get_occupation_index(get_modification_method()));
 		}
 
-
-		template<pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
+		template<
+			pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
 		void set_occupations()
 		{
-			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
-				m_occupations.[:get_occupation_member(^^TARGET_DATA_TYPES):].set()
-			);
+			set_occupations<TARGET_DATA_TYPES...>(get_occupation_index(get_modification_method()));
 		}
 
-		template<pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
+		template<
+			pulse::ecs::concepts::Data... TARGET_DATA_TYPES>
 		void reset_occupations()
 		{
-			PULSE_FOR_EACH_VARIADIC_ARGUMENT(
-				m_occupations.[:get_occupation_member(^^TARGET_DATA_TYPES):].reset()
-			);
+			reset_occupations<TARGET_DATA_TYPES...>(get_occupation_index(get_modification_method()));
+		}
+
+		void set_occupations()
+		{
+			auto& occupations = m_occupations[get_occupation_index(get_modification_method())];
+			occupations.set();
+		}
+
+		void reset_occupations()
+		{
+			auto& occupations = m_occupations[get_occupation_index(get_modification_method())];
+			occupations.reset();
+		}
+
+		void apply_occupations()
+		{
+			if constexpr(get_modification_method() == EArchetypeChunkModificationMethod::Deferred)
+			{
+				const auto& deferred = m_occupations[get_occupation_index(EArchetypeChunkModificationMethod::Deferred)];
+				auto& immediate = m_occupations[get_occupation_index(EArchetypeChunkModificationMethod::Immediate)];
+				immediate = deferred;
+			}
 		}
 
 		template<
@@ -217,7 +306,7 @@ namespace pulse::ecs
 		}
 
 private:
-		[:get_occupation_type():] m_occupations;
+		[:get_occupation_type():] m_occupations[get_occupation_count()];
 		[:get_chunk_type():] m_chunk;
 	};
 }

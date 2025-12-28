@@ -210,6 +210,15 @@ namespace pulse::ecs
 			 );
 		}
 
+		void apply_component_modifications()
+		{
+			template for(constexpr auto type : COMPONENT_STORE_TYPE::get_archetype_chunk_types())
+			{
+				auto& chunk = m_componentStore.template get_archetype_chunk_mutable<typename [:type:]>();
+				chunk.apply_occupations();
+			}
+		}
+
 	private:
 		[:get_entity_store_type():] m_entityStore;
 		[:get_component_store_type():] m_componentStore;
