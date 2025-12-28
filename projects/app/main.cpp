@@ -1,141 +1,165 @@
 //#include "app/ecs/module/scene.h"
 
-#include <cstddef>
+#include "ecs/concepts/hasdependencyconcept.h"
+#include "ecs/concepts/systemconcept.h"
+#include "ecs/types/dataaccess.h"
+#include "ecs/types/entity.h"
+#include "ecs/types/systemhandle.h"
+#include "ecs/utils/collectors.h"
+#include "ecs/utils/generators.h"
+#include "ecs/utils/invokers.h"
+#include "foundation/types.h"
+
+
+#include "ecs/concepts/entityconcept.h"
+#include "ecs/types/archetypechunk.h"
+#include "ecs/types/entitystore.h"
+#include "ecs/types/archetypestore.h"
+#include "ecs/types/world.h"
+#include "ecs/types/outputhandle.h"
+#include "ecs/types/systemchunk.h"
+#include "ecs/types/systemstore.h"
+
+#include "ecs/utils/meta.h"
+
+#include "foundation/meta.h"
+#include "foundation/types.h"
+
 #include <meta>
 #include <print>
 
 
-#include "ecs/v3/system/system.h"
-#include "ecs/v3/utils/detail.h"
-#include "ecs/v3/world/world.h"
-
-namespace pulse::ecs::humanoid
+namespace pulse::ecs::module
 {
-    using Entity = pulse::ecs::Entity<std::size_t, 2000>;
+    using Entity = pulse::ecs::Entity<100>;
 
-    struct Position final
+    struct Config
     {
-        int x = 0;
-        int y = 0;
+        u32 m_value = 0;
     };
 
-    struct Velocity final
+    struct Name
     {
-        int x = 0;
-        int y = 0;
+        u32 m_value = 0;
     };
 
-    struct Input final
+    struct Size
     {
-        int x = 0;
-        int y = 0;
+        u32 m_value = 0;
     };
 
-    struct Moving final
+    struct Result
     {
-        float speed = 0.0f;
+        using Output = int;
+        u32 m_value = 0;
     };
 
-    void Foo(const Position& in_position)
+    struct Result2
     {
-        std::print("Hello!");
+        using Output = int;
+        u32 m_value = 0;
+    };
+
+    struct Result3
+    {
+        using Output = int;
+        u32 m_value = 0;
+    };
+
+    
+
+    
+
+    void Aoo(const Config&)
+    {
+        std::println("Aoo");
     }
 
-/**
-    template <typename T>
-    struct output{ T m_data; };
-
-    template <typename T>
-    struct input{ T m_data; };
-
-    template <typename T>
-    struct add{ T m_data; };
-
-    template <typename T>
-    struct remove{ T m_data; };
-
-
-
-    // This system outputs a Velocity value for each entity with input component.
-    output<Velocity> UpdateVelocity(const Input& in_input)
+    void Boo(const Config&)
     {
-        Velocity v;
-        v.x = in_input.x;
-        v.y = in_input.y;
+        std::println("Boo");
+    }
 
-        return {v};
+    OutputHandle<Result> Coo(const Config&)
+    {
+        std::println("Coo");
+        return {};
+    }
+
+    OutputHandle<Result2> Doo(const Config&)
+    {
+        OutputHandle<Result2> result;
+        std::println("Doo");
+        result.set_result(Result2{.m_value = 5});
+        return result;
+    }
+
+    void Eoo(const Result& in_result)
+    {
+        std::println("Eoo");
+    }
+
+    OutputHandle<Result3> Foo(const Result2& in_result)
+    {
+        std::println("Foo");
+        return {};
+    }
+
+    void Goo(const Result3& in_r)
+    {
+        std::println("Goo");
     }
 
 
-    // This system reads velocity outputs (depends on all other systems that outputs a velocity)
-    //  and returns another velocity output.
-    output<Velocity> ClampVelocity(input<Velocity> in_velocityInput)
-    {
-      Velocity v;
-      v.x = std::clamp(in_velocityInput.m_data.x, -2, 2);
-      v.y = std::clamp(in_velocityInput.m_data.y, -2, 2);
-      return {v};
-    }
-
-    void SetVelocity(Velocity& out_velocity, input<Velocity> in_velocityInput)
-    {
-        out_velocity.x = in_velocityInput.m_data.x;
-        out_velocity.y = in_velocityInput.m_data.y;
-    }
-
-    void UpdatePosition(const Velocity& in_velocity, Position& out_position)
-    {
-        out_position.x += in_velocity.x;
-        out_position.y += in_velocity.y;
-    }
-
-    void ToggleMoving(const Velocity& in_velocity, Components& out_components)
-    {
-        if(in_velocity.x == 0 && in_velocity.y == 0)
-        {
-          out_components.remove<Moving>();
-        }
-        else
-        {
-            const float speed = std::sqrtf(in_velocity.x * in_velocity.x + in_velocity.y * in_velocity.y);
-            out_components.add<Moving>({.speed = speed});
-        }
-    }
-*/
 }
+
+struct Test;
 
 consteval
 {
+    std::vector<std::meta::info> members;
 
+    const auto add_member = [&](std::meta::info in_type)
+    {
+        members.push_back(std::meta::data_member_spec(in_type));
+    };
+
+    const auto add_member_int = [&]()
+    {
+        members.push_back(std::meta::data_member_spec(^^int));
+    };
+
+    const auto add_member_n = [&](auto id)
+    {
+        members.push_back(std::meta::data_member_spec(^^int, {.name=id}));
+    };
+
+    constexpr auto ctx = std::meta::access_context::unchecked();
+    constexpr auto modulens = ^^pulse::ecs::module;
+    constexpr auto config = ^^pulse::ecs::module::Config;
+
+    using Acc = pulse::ecs::DataAccess<const pulse::ecs::module::Result&>;
+    constexpr bool b = pulse::ecs::meta::is_output(Acc::get_data_type());
+    if(b)
+    {
+        add_member_n("true");
+    }
+
+    std::meta::define_aggregate(^^Test, members);
 }
 
 int main()
 {
-    using World = pulse::ecs::World<^^pulse::ecs::humanoid>;
-    World humanoidEcs;
-    const auto& pool = humanoidEcs.m_componentStore.get_component_pool<pulse::ecs::humanoid::Position>();
 
-    pulse::ecs::humanoid::Entity e;
-    e.set_index(2);
-    humanoidEcs.m_componentStore.set_component_bitset<pulse::ecs::humanoid::Position>(e);
+    using World = [:pulse::ecs::generators::generate_default_world(^^pulse::ecs::module):];
+    
+    World w;
+    w.add_component<pulse::ecs::module::Config, pulse::ecs::module::Name>(w.new_entity());
+    w.add_component<pulse::ecs::module::Name>(w.new_entity());
+    w.add_component<pulse::ecs::module::Size, pulse::ecs::module::Config>(w.new_entity());
+    w.add_component<pulse::ecs::module::Size, pulse::ecs::module::Name>(w.new_entity());
+    w.add_component<pulse::ecs::module::Config>(w.new_entity());
 
-    auto s = pulse::ecs::System<decltype(pulse::ecs::humanoid::Foo), &pulse::ecs::humanoid::Foo>();
-    s.invoke<decltype(humanoidEcs.m_componentStore)>(
-            humanoidEcs.m_componentStore
-    );
-
-    //using namespace pulse::ecs::module;
-
-    //Scene s;
-
-    //Scene::Entity e1{0};
-    //Scene::Entity e2{1};
-
-    //s.add_component<Name>(e1);
-    //s.add_component<Fame>(e1);
-    //s.add_component<Fame>(e2);
-
-    //s.invoke_systems();
-
+    w.invoke_systems();
     return 0;
 }
