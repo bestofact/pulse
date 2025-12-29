@@ -122,6 +122,20 @@ namespace pulse::ecs
 			}
 			return types;
 		}
+
+		consteval static std::meta::info get_modifier_type()
+		{
+			const auto params = std::meta::parameters_of(get_system_type());
+			for(const auto param : params)
+			{
+				const auto type = pulse::meta::decay_all(param);
+				if(pulse::ecs::meta::is_archetype_modifier(type))
+				{
+					return type;
+				}
+			}
+			return std::meta::info();
+		}
 #pragma endregion
 	};
 }

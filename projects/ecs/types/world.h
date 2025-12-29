@@ -64,7 +64,7 @@ namespace pulse::ecs
 				const [:get_entity_type():] in_entity)
 		{
 			const auto& chunk = in_store.template get_archetype_chunk<DATA_TYPE>();
-			const auto& data = chunk.template get_data<typename [:get_entity_type:], DATA_TYPE>(in_entity);
+			const auto& data = chunk.template get_data<typename [:get_entity_type():], DATA_TYPE>(in_entity);
 			return data;
 		}
 
@@ -76,7 +76,7 @@ namespace pulse::ecs
 				const [:get_entity_type():] in_entity)
 		{
 			auto& chunk = in_store.template get_archetype_chunk_mutable<DATA_TYPE>();
-			auto& data = chunk.template get_data_mutable<typename [:get_entity_type:], DATA_TYPE>(in_entity);
+			auto& data = chunk.template get_data_mutable<typename [:get_entity_type():], DATA_TYPE>(in_entity);
 			return data;
 		}
 
@@ -197,8 +197,31 @@ namespace pulse::ecs
 			return get_data_mutable_in_archetype_store<OUTPUT_STORE_TYPE, OUTPUT_TYPE>(m_outputStore, in_entity);
 		}
 
+		template<pulse::ecs::concepts::ArchetypeStore STORE_TYPE>
+		void reset_occupations(STORE_TYPE& io_store)
+		{
+			template for(constexpr auto type : STORE_TYPE::get_archetype_chunk_types())
+			{
+				auto& chunk = io_store.template get_archetype_chunk_mutable<typename [:type:]>();
+				chunk.reset_occupations();
+			}
+		}
+
+		template<pulse::ecs::concepts::ArchetypeStore STORE_TYPE>
+		void apply_occupations(STORE_TYPE& io_store)
+		{
+			template for(constexpr auto type : STORE_TYPE::get_archetype_chunk_types())
+			{
+				auto& chunk = io_store.template get_archetype_chunk_mutable<typename [:type:]>();
+				chunk.apply_occupations();
+			}
+		}
+
 		void invoke_systems()
 		{
+			reset_occupations(m_outputStore);
+			apply_occupations(m_componentStore);
+
 			pulse::ecs::invokers::invoke_systems<
 				typename [:get_entity_type():],
 			 	typename [:get_component_store_type():],
@@ -208,15 +231,9 @@ namespace pulse::ecs
 			 	m_componentStore,
 			 	m_outputStore
 			 );
-		}
 
-		void apply_component_modifications()
-		{
-			template for(constexpr auto type : COMPONENT_STORE_TYPE::get_archetype_chunk_types())
-			{
-				auto& chunk = m_componentStore.template get_archetype_chunk_mutable<typename [:type:]>();
-				chunk.apply_occupations();
-			}
+			 apply_occupations(m_outputStore);
+			 apply_occupations(m_componentStore);
 		}
 
 	private:

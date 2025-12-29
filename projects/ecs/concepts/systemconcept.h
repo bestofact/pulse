@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ecs/concepts/archetypemodifierconcept.h"
 #include "ecs/concepts/helpers.h"
 #include "ecs/concepts/entityconcept.h"
 #include "ecs/concepts/outputhandleconcept.h"
@@ -28,7 +29,8 @@ namespace __detail
 		for(const auto parameter : parameters)
 		{
 			const auto type = pulse::meta::decay_all(parameter);
-			if(!pulse::meta::is_concept_satisfied(type, ^^pulse::ecs::concepts::Data))
+			if(!pulse::meta::is_concept_satisfied(type, ^^pulse::ecs::concepts::Data)
+			&& !pulse::meta::is_concept_satisfied(type, ^^pulse::ecs::concepts::ArchetypeModifier))
 			{
 				return false;
 			}

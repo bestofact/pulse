@@ -22,6 +22,7 @@ namespace pulse::ecs::concepts
 		{ T::get_mutable_required_component_types() } -> std::meta::reflection_range;
 		{ T::get_produced_output_types() } -> std::meta::reflection_range;
 		{ T::get_consumed_output_types() } -> std::meta::reflection_range;
+		{ T::get_modifier_type() } -> std::same_as<std::meta::info>;
 
 	  	pulse::meta::is_concept_satisfied(T::get_system_type(), ^^pulse::ecs::concepts::System);
 	};

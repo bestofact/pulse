@@ -36,8 +36,8 @@ namespace pulse::ecs::concepts
 	template<typename T>
     concept Entity =
        pulse::ecs::concepts::RequireEcsAnyParentNamespace<T>
-    && std::constructible_from<T>
-    && std::constructible_from<T, u64>
+    //&& std::constructible_from<T>
+    //&& std::constructible_from<T, u64>
     && has_one_static_entity_index_member(^^T)
     && requires
     {

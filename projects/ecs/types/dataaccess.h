@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ecs/concepts/archetypemodifierconcept.h"
 #include "ecs/concepts/dataconcept.h"
 
 #include "foundation/meta.h"
@@ -9,7 +10,10 @@
 namespace pulse::ecs
 {
 	template<typename TYPE>
-	requires ( pulse::ecs::concepts::Data<typename [:pulse::meta::decay_all(^^TYPE):]>)
+	requires ( 
+		pulse::ecs::concepts::Data<typename [:pulse::meta::decay_all(^^TYPE):]>
+	||	pulse::ecs::concepts::ArchetypeModifier<typename [:pulse::meta::decay_all(^^TYPE):]>
+	)
 	struct DataAccess
 	{
 #pragma region ------------------ META -------------------
@@ -26,7 +30,8 @@ namespace pulse::ecs
 
 		consteval static bool is_mutable()
 		{
-			return !std::meta::is_const_type(std::meta::remove_reference(get_type()));
+			return !std::is_const_v<TYPE>;
+			//return !std::meta::is_const(std::meta::remove_reference(get_type()));
 		}
 
 		consteval static bool is_optional()

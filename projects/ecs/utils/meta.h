@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ecs/concepts/archetypemodifierconcept.h"
 #include "ecs/concepts/componentconcept.h"
 #include "ecs/concepts/dataconcept.h"
 #include "ecs/concepts/entityconcept.h"
@@ -27,6 +28,11 @@ namespace pulse::ecs::meta
     	return ^^pulse::ecs;
     }
 
+    consteval std::meta::info get_archetype_modifier_concept()
+    {
+    	return ^^pulse::ecs::concepts::ArchetypeModifier;
+    }
+
 	consteval std::meta::info get_component_concept()
 	{
 		return ^^pulse::ecs::concepts::Component;
@@ -47,7 +53,7 @@ namespace pulse::ecs::meta
 		return ^^pulse::ecs::concepts::Output;
 	}
 
-	consteval std::meta::info get_output_wrapper_concept()
+	consteval std::meta::info get_output_handle_concept()
 	{
 		return ^^pulse::ecs::concepts::OutputHandle;
 	}
@@ -65,6 +71,11 @@ namespace pulse::ecs::meta
 	consteval std::meta::info get_has_dependency_concept()
 	{
 		return ^^pulse::ecs::concepts::HasDependency;
+	}
+
+	consteval bool is_archetype_modifier(std::meta::info in_info)
+	{
+		return std::meta::is_type(in_info) && pulse::meta::is_concept_satisfied(in_info, get_archetype_modifier_concept());
 	}
 
 	consteval bool is_component(std::meta::info in_info)
@@ -87,9 +98,9 @@ namespace pulse::ecs::meta
 		return std::meta::is_type(in_info) && pulse::meta::is_concept_satisfied(in_info, get_output_concept());
 	}
 
-	consteval bool is_output_wrapper(std::meta::info in_info)
+	consteval bool is_output_handle(std::meta::info in_info)
 	{
-		return std::meta::is_type(in_info) && pulse::meta::is_concept_satisfied(in_info, get_output_wrapper_concept());
+		return std::meta::is_type(in_info) && pulse::meta::is_concept_satisfied(in_info, get_output_handle_concept());
 	}
 
 	consteval bool is_system(std::meta::info in_info)

@@ -6,6 +6,7 @@
 #include "ecs/utils/meta.h"
 #include "foundation/meta.h"
 
+#include <memory>
 #include <meta>
 #include <array>
 #include <bitset>
@@ -261,14 +262,12 @@ public:
 
 		void set_occupations()
 		{
-			auto& occupations = m_occupations[get_occupation_index(get_modification_method())];
-			occupations.set();
+			set_occupations<DATA_TYPES...>();
 		}
 
 		void reset_occupations()
 		{
-			auto& occupations = m_occupations[get_occupation_index(get_modification_method())];
-			occupations.reset();
+			reset_occupations<DATA_TYPES...>();
 		}
 
 		void apply_occupations()
@@ -288,7 +287,7 @@ public:
 		{
 			constexpr auto member = get_chunk_member(^^DATA_TYPE);
 			const u64 index = in_entity.get_index();
-			const auto& archetype = m_chunk[index];
+			const auto& archetype = (*m_chunk)[index];
 			const auto& data = archetype.[:member:];
 			return data;
 		}
@@ -300,13 +299,13 @@ public:
 		{
 			constexpr auto member = get_chunk_member(^^DATA_TYPE);
 			const u64 index = in_entity.get_index();
-			auto& archetype = m_chunk[index];
+			auto& archetype = (*m_chunk)[index];
 			auto& data = archetype.[:member:];
 			return data;
 		}
 
 private:
 		[:get_occupation_type():] m_occupations[get_occupation_count()];
-		[:get_chunk_type():] m_chunk;
+		std::unique_ptr<typename [:get_chunk_type():]> m_chunk = std::make_unique<typename [:get_chunk_type():]>();
 	};
 }

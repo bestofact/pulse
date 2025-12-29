@@ -41,6 +41,8 @@ namespace pulse::ecs
 		EntityType new_entity()
 		{
 			const pulse::u64 index = next_available_entity_index();
+			m_status.set(index);
+			
 			const EntityType entity(index);
 			return entity;
 		}

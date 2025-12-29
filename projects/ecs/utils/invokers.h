@@ -27,8 +27,6 @@
 #include <utility>
 #include <ranges>
 
-#include <print>
-
 namespace pulse::ecs::invokers
 {
 namespace __detail
@@ -85,6 +83,35 @@ namespace __detail
 	}
 
 	template<
+		pulse::ecs::concepts::ArchetypeStore COMPONENT_STORE_TYPE,
+		pulse::ecs::concepts::ArchetypeStore OUTPUT_STORE_TYPE,
+		pulse::ecs::concepts::DataAccess DATA_ACCESS_TYPE>
+	requires (pulse::ecs::meta::is_archetype_modifier(DATA_ACCESS_TYPE::get_data_type()))
+	auto get_data_occupation(
+		COMPONENT_STORE_TYPE& out_componentStore,
+		OUTPUT_STORE_TYPE& out_outputStore)
+	{
+		std::bitset<COMPONENT_STORE_TYPE::get_entity_capacity()> occupation;
+		occupation.set();
+		return occupation;
+	}
+
+	template<
+		pulse::ecs::concepts::Entity ENTITY_TYPE,
+		pulse::ecs::concepts::ArchetypeStore STORE_TYPE,
+		pulse::ecs::concepts::DataAccess DATA_ACCESS_TYPE>
+	requires (DATA_ACCESS_TYPE::is_mutable())
+	[:DATA_ACCESS_TYPE::get_type():] access_data(
+		const ENTITY_TYPE in_entity,
+		STORE_TYPE& out_store)
+	{
+		constexpr auto type = DATA_ACCESS_TYPE::get_data_type();
+		auto& chunk = out_store.template get_archetype_chunk_mutable<typename [:type:]>();
+		auto& data = chunk.template get_data_mutable<ENTITY_TYPE, typename [:type:]>(in_entity);
+		return data;
+	}
+
+	template<
 		pulse::ecs::concepts::Entity ENTITY_TYPE,
 		pulse::ecs::concepts::ArchetypeStore STORE_TYPE,
 		pulse::ecs::concepts::DataAccess DATA_ACCESS_TYPE>
@@ -93,13 +120,6 @@ namespace __detail
 		STORE_TYPE& out_store)
 	{
 		constexpr auto type = DATA_ACCESS_TYPE::get_data_type();
-		if constexpr(DATA_ACCESS_TYPE::is_mutable())
-		{
-			auto& chunk = out_store.template get_archetype_chunk_mutable<typename [:type:]>();
-			auto& data = chunk.template get_data_mutable<ENTITY_TYPE, typename [:type:]>(in_entity);
-			return data;
-		}
-
 		const auto& chunk = out_store.template get_archetype_chunk<typename [:type:]>();
 		const auto& data = chunk.template get_data<ENTITY_TYPE, typename [:type:]>(in_entity);
 		return data;
@@ -137,6 +157,22 @@ namespace __detail
 			in_entity,
 			out_componentStore
 		);
+	}
+
+	template<
+		pulse::ecs::concepts::Entity ENTITY_TYPE,
+		pulse::ecs::concepts::ArchetypeStore COMPONENT_STORE_TYPE,
+		pulse::ecs::concepts::ArchetypeStore OUTPUT_STORE_TYPE,
+		pulse::ecs::concepts::DataAccess DATA_ACCESS_TYPE>
+	requires (pulse::ecs::meta::is_archetype_modifier(DATA_ACCESS_TYPE::get_data_type())
+	)
+	[:DATA_ACCESS_TYPE::get_type():] access_data(
+		const ENTITY_TYPE in_entity,
+		COMPONENT_STORE_TYPE& out_componentStore,
+		OUTPUT_STORE_TYPE& out_outputStore)
+	{
+		const [:DATA_ACCESS_TYPE::get_data_type():] modifier(in_entity, out_componentStore);
+		return modifier;
 	}
 
 	template<

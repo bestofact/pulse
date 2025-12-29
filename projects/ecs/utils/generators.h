@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ecs/types/archetypemodifier.h"
 #include "ecs/types/world.h"
 #include "ecs/utils/collectors.h"
 #include "ecs/utils/meta.h"
@@ -67,7 +68,6 @@ namespace __detail
 		return store;
 	}
 }
-
 	consteval std::meta::info generate_default_entity_store(std::meta::info in_namespace)
 	{
 		const auto entity = pulse::ecs::meta::get_entity_type(in_namespace);
@@ -104,5 +104,17 @@ namespace __detail
 			}
 		);
 		return world;
+	}
+
+	consteval std::meta::info generate_default_component_modifier(std::meta::info in_namespace)
+	{
+		const auto modifier = std::meta::substitute(
+			^^pulse::ecs::ArchetypeModifier,
+			{
+				pulse::ecs::meta::get_entity_type(in_namespace),
+				generate_default_component_store(in_namespace)
+			}
+		);
+		return modifier;
 	}
 }

@@ -19,6 +19,15 @@ namespace pulse::meta
 	}
 
 	template<typename... Ts>
+	consteval std::array<std::meta::info, get_arg_count<Ts...>()> get_arg_types()
+	{
+		const std::array<std::meta::info, get_arg_count<Ts...>()> types = {
+			^^Ts...
+		};
+		return types;
+	}
+
+	template<typename... Ts>
 	consteval std::meta::info get_nth_arg(const pulse::u64 in_n)
 	{
 		const std::array<std::meta::info, get_arg_count<Ts...>()> infos = {
