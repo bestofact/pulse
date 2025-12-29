@@ -1,204 +1,188 @@
 #pragma once
 #include "app/modules/world.h"
 
-
 #include "ecs/types/entity.h"
-#include "ecs/types/outputhandle.h"
-
 #include "ecs/utils/generators.h"
 #include "foundation/types.h"
 
-
-
-#include <iostream>
 #include <chrono>
+#include <iostream>
+#include <random>
 #include <vector>
-#include <iomanip>
+#include <algorithm>
+#include <numeric>
+#include <cstring>
 
-
+#pragma once
+#include "ecs/types/entity.h"
+#include "ecs/types/outputhandle.h"
+#include "ecs/utils/generators.h"
+#include "foundation/types.h"
 
 namespace pulse::ecs::bench
 {
-    // -------------------------------------------------------------------------
-    // 1. CONFIGURATION
-    // -------------------------------------------------------------------------
-    using Entity = pulse::ecs::Entity<65'000>;
+    using Entity = pulse::ecs::Entity<1'000'000>;
+    // ---------------------------------------------------------------------
+    // Components
+    // ---------------------------------------------------------------------
 
-    // -------------------------------------------------------------------------
-    // 2. COMPONENTS
-    // -------------------------------------------------------------------------
-    struct Position { f32 x = 0; f32 y = 0; f32 z = 0; };
-    struct Velocity { f32 x = 0; f32 y = 0; f32 z = 0; };
-    
-    // Standard benchmark "padding" component. 
-    // We add this to entities to test if your ECS can handle skipping 
-    // irrelevant data without cache misses (the "AoS vs SoA" test).
-    struct DataPadding { f32 pad[8]; }; 
-
-    // A resource component for DeltaTime (assuming your ECS supports singletons, 
-    // otherwise we hardcode dt in the system).
-    struct FrameConfig { f32 dt = 0.016f; };
-
-    // -------------------------------------------------------------------------
-    // 3. SYSTEM IO (The "Glue")
-    // -------------------------------------------------------------------------
-    // The modifier lets us write back to the entity
-    using Modifier = [:pulse::ecs::generators::generate_default_component_modifier(^^pulse::ecs::bench):];
-
-    // The intermediate data for the pipeline
-    struct MovementResult
+    struct Position
     {
-        using Output = int; // Preserving your framework's required typedef
-        f32 x, y, z;
+        f32 x = 0, y = 0, z = 0;
     };
 
-    // -------------------------------------------------------------------------
-    // 4. SYSTEMS
-    // -------------------------------------------------------------------------
-    
-    // SYSTEM A: THE CALCULATOR
-    // Reads Position and Velocity, computes the next step.
-    // Does NOT mutate directly (Pure Functional approach).
-    OutputHandle<MovementResult> ComputeMovement(const Position& pos, const Velocity& vel)
+    struct Velocity
     {
-        OutputHandle<MovementResult> out;
-        
-        // Standard "euler integration" step
-        const f32 dt = 0.016f; // Fixed 60FPS step for deterministic benchmarking
-        
-        MovementResult result;
-        result.x = pos.x + (vel.x * dt);
-        result.y = pos.y + (vel.y * dt);
-        result.z = pos.z + (vel.z * dt);
+        f32 x = 0, y = 0, z = 0;
+    };
 
-        out.set_result(std::move(result));
-        return out;
+    struct Target
+    {
+        Entity id;
+    };
+
+    // Sink component to prevent dead-code elimination
+    struct BenchSink
+    {
+        f64 value = 0.0;
+    };
+
+    // ---------------------------------------------------------------------
+    // Glue: Modifier (AFTER components, BEFORE systems)
+    // ---------------------------------------------------------------------
+
+    using Modifier = [:pulse::ecs::generators::generate_default_component_modifier(^^pulse::ecs::bench):];
+
+    // ---------------------------------------------------------------------
+    // Systems
+    // ---------------------------------------------------------------------
+
+    // 1) Hot-path linear integration
+    void Integrate(Position& p, const Velocity& v, BenchSink& sink)
+    {
+        p.x += v.x;
+        p.y += v.y;
+        p.z += v.z;
+
+        sink.value += (f64)p.x;
     }
 
-    // SYSTEM B: THE APPLIER
-    // Takes the calculation result and writes it back to the ECS storage.
-    void ApplyMovement(const MovementResult& result, Modifier modifier)
+    // 2) Multi-component join
+    void IntegrateAndMix(Position& p, const Velocity& v, BenchSink& sink)
     {
-        // We construct a new Position. 
-        // Note: If your framework supports partial updates, that would be preferred,
-        // but replacing the component is the standard stress test for "Write Bandwidth".
-        modifier.set(Position{ result.x, result.y, result.z });
+        p.x += v.x * 0.5f;
+        p.y += v.y * 0.25f;
+        p.z += v.z * 0.125f;
+
+        sink.value += (f64)(p.x + p.y + p.z);
     }
 
-    // -------------------------------------------------------------------------
-    // 5. WORLD GENERATION
-    // -------------------------------------------------------------------------
-    // This generates the graph: [Position, Velocity] -> ComputeMovement -> [MovementResult] -> ApplyMovement -> [Modifier]
+    // 3) Worst-case random access INSIDE ECS system
+    void RandomAccess(
+        const Target& t,
+        const Position& my_pos,
+        Modifier mod,
+        BenchSink& sink)
+    {
+        const Position& other = mod.value<Position>(t.id);
+
+        const f64 dx = (f64)other.x - (f64)my_pos.x;
+        const f64 dy = (f64)other.y - (f64)my_pos.y;
+        const f64 dz = (f64)other.z - (f64)my_pos.z;
+
+        sink.value += dx*dx + dy*dy + dz*dz;
+    }
+
+    // ---------------------------------------------------------------------
+    // Glue: World (LAST thing in namespace)
+    // ---------------------------------------------------------------------
+
     using World = [:pulse::ecs::generators::generate_default_world(^^pulse::ecs::bench):];
 }
 
-// [Assuming your framework and the 'pulse::ecs::bench::movement' namespace are included above]
-void RunBenchmark()
+using namespace pulse;
+using namespace pulse::ecs::bench;
+
+static double now_ms()
 {
-    using namespace pulse;
-    using namespace pulse::ecs::bench;
-
     using Clock = std::chrono::high_resolution_clock;
-    using Ms = std::chrono::duration<double, std::milli>;
-
-    // ---------------------------------------------------------
-    // 1. SETUP
-    // ---------------------------------------------------------
-    const int ENTITY_COUNT = 65'000; // Power of 2, fits in <100'000>
-    const int ITERATIONS = 2'000;    // Enough frames to smooth out noise
-    
-    std::cout << "--- BENCHMARK STARTING ---\n";
-    std::cout << "Setup: " << ENTITY_COUNT << " Entities | " << ITERATIONS << " Frames\n";
-
-    World world;
-
-    // Populate World
-    // We add Position & Velocity to match the 'ComputeMovement' system requirements
-    for (int i = 0; i < ENTITY_COUNT; ++i) {
-        auto e = world.new_entity();
-        // 1. Add Data (to create the "Archetype")
-        world.add_component<Position>(e);
-        world.add_component<Velocity>(e);
-        world.get_component_mutable<Velocity>(e) = {1.0f, 0.5f, 0};
-        
-        // 2. Add Padding to half the entities
-        // This forces the ECS to deal with fragmented memory or multiple tables/archetypes,
-        // which is a critical part of the "Industry Standard" test.
-        if (i % 2 == 0) {
-            world.add_component<DataPadding>(e);
-        }
-    }
-
-    // 2. FRAGMENTATION: "Kill" every even entity
-    // In your deferred bitset system, this should just flip a bit.
-    // Ideally, use whatever function removes the 'Position' or 'Velocity' 
-    // component to disqualify them from the system.
-    for (u64 i = 0; i < world.get_entity_capacity(); ++i) {
-        if (i % 2 == 0) {
-            // Remove component to remove from system processing
-            world.remove_component<Velocity>(pulse::ecs::bench::Entity(i)); 
-        }
-    }
-
-    // ---------------------------------------------------------
-    // 2. WARMUP
-    // ---------------------------------------------------------
-    // Run systems once to initialize internal caches/instruction caches
-    // and avoid measuring the first-frame cold start penalty.
-    world.invoke_systems(); 
-
-    // ---------------------------------------------------------
-    // 3. MEASUREMENT
-    // ---------------------------------------------------------
-    auto start_time = Clock::now();
-
-    for (int i = 0; i < ITERATIONS; ++i) {
-        world.invoke_systems();
-    }
-
-    auto end_time = Clock::now();
-
-    // ---------------------------------------------------------
-    // 4. REPORTING
-    // ---------------------------------------------------------
-    Ms total_duration = end_time - start_time;
-    double avg_ms = total_duration.count() / ITERATIONS;
-    double fps_equiv = 1000.0 / avg_ms;
-
-    std::cout << "\n--- RESULTS ---\n";
-    std::cout << std::fixed << std::setprecision(4);
-    std::cout << "Total Time:   " << total_duration.count() << " ms\n";
-    std::cout << "Avg Frame:    " << avg_ms << " ms\n";
-    std::cout << "Throughput:   " << fps_equiv << " FPS (Simulated)\n";
-    std::cout << "Per Entity:   " << (avg_ms * 1'000'000 / ENTITY_COUNT) << " ns\n";
-    //std::cout << "Checksum: " << total_x << " (Prevents optimization)\n";
-    
-    std::cout << "----------------\n";
+    static auto t0 = Clock::now();
+    return std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
 }
 
-
-static void run_modules()
+void RunEcsSystemBenchmark()
 {
-    using namespace pulse;
-    using namespace pulse::ecs::modules;
+    constexpr u32 ENTITY_COUNT = 1'000'000;
+    constexpr u32 ITERATIONS   = 300;
 
     World world;
+    std::vector<Entity> entities;
+    entities.reserve(ENTITY_COUNT);
 
-    for(u64 i = 0; i < 100; i++)
+    // -----------------------------------------------------------------
+    // Entity creation
+    // -----------------------------------------------------------------
+    for (u32 i = 0; i < ENTITY_COUNT; ++i)
     {
-        const Entity entity = world.new_entity();
-        world.add_component<Name>(entity);
-        world.get_component_mutable<Name>(entity).m_name = std::format("Module {0}", entity.get_index());
+        auto e = world.new_entity();
+
+        world.add_component<Position>(e);
+        world.add_component<Velocity>(e);
+        world.add_component<BenchSink>(e);
+
+        world.get_component_mutable<Position>(e) = { (f32)i, 0.0f, 0.0f };
+        world.get_component_mutable<Velocity>(e) = { 1.0f, 0.5f, 0.25f };
+
+        entities.push_back(e);
     }
 
-    for(u64 i = 0; i < 100; i++)
+    // Add random targets for the cache-killer system
+    std::mt19937 rng(42);
+    std::uniform_int_distribution<u32> dist(0, ENTITY_COUNT - 1);
+
+    for (auto e : entities)
     {
+        world.add_component<Target>(e);
+        world.get_component_mutable<Target>(e) = { entities[dist(rng)] };
+    }
+
+    // Warmup
+    for (int i = 0; i < 10; ++i)
         world.invoke_systems();
-    }
+
+    // -----------------------------------------------------------------
+    // Timed run
+    // -----------------------------------------------------------------
+    const double start = now_ms();
+
+    for (u32 i = 0; i < ITERATIONS; ++i)
+        world.invoke_systems();
+
+    const double end = now_ms();
+
+    // -----------------------------------------------------------------
+    // Reporting
+    // -----------------------------------------------------------------
+    const double total_ms = end - start;
+    const double avg_ms   = total_ms / ITERATIONS;
+    const double ns_per_entity =
+        (avg_ms * 1e6) / (double)ENTITY_COUNT;
+
+    // checksum
+    f64 checksum = 0.0;
+    for (auto e : entities)
+        checksum += world.get_component<BenchSink>(e).value;
+
+    std::cout << "\n--- ECS SYSTEM BENCHMARK ---\n";
+    std::cout << "Entities:        " << ENTITY_COUNT << "\n";
+    std::cout << "Iterations:      " << ITERATIONS << "\n";
+    std::cout << "Avg frame:       " << avg_ms << " ms\n";
+    std::cout << "ns/entity-step:  " << ns_per_entity << "\n";
+    std::cout << "Checksum:        " << checksum << "\n";
 }
 
 int main()
 {
-    RunBenchmark();
-    return 0;
+    RunEcsSystemBenchmark();
+    return 1;
 }
