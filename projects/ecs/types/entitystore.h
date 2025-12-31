@@ -2,8 +2,7 @@
 
 #include "ecs/concepts/entityconcept.h"
 #include "foundation/limits.h"
-
-#include <bitset>
+#include "foundation/bits/bitmask.h"
 
 namespace pulse::ecs
 {
@@ -23,19 +22,16 @@ namespace pulse::ecs
 			return EntityType::get_capacity();
 		}
 
+		consteval static pulse::u64 get_status_size()
+		{
+			return get_capacity() / 64;
+		}
+
 #pragma endregion
 
 		pulse::u64 next_available_entity_index()
 		{
-			for(pulse::u64 index = 0; index < get_capacity(); ++index)
-			{
-				if(!m_status.test(index))
-				{
-					return index;
-				}
-			}
-
-			return pulse::invalid_index();
+			return m_status.find_first_zero();
 		}
 
 		EntityType new_entity()
@@ -54,6 +50,8 @@ namespace pulse::ecs
 		}
 
 	private:
-		std::bitset<get_capacity()> m_status;
+		//pulse::u64  m_status[get_status_size()];
+		pulse::BitMask<get_capacity()> m_status;
+		//std::bitset<get_capacity()> m_status;
 	};
 }
